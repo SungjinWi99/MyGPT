@@ -1,0 +1,15 @@
+[project]
+name = "mygpt"
+version = "0.1.0"
+description = "A small decoder-only language model training project for Korean instruction data"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "dacite>=1.8",
+    "datasets>=3.0",
+    "PyYAML>=6.0",
+    "torch>=2.2",
+    "tqdm>=4.66",
+    "transformers>=4.45",
+    "wandb>=0.18",
+]

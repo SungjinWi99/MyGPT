@@ -1,0 +1,7 @@
+dacite>=1.8
+datasets>=3.0
+PyYAML>=6.0
+torch>=2.2
+tqdm>=4.66
+transformers>=4.45
+wandb>=0.18

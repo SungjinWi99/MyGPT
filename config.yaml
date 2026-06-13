@@ -1,0 +1,15 @@
+model:
+  d_model: 512
+  n_decoder_blocks: 4
+  n_attention_heads: 8
+  max_seq_len: 1024
+tokenizer:
+  pretrained_model_name_or_path: "skt/kogpt2-base-v2"
+  bos_token: "</s>"
+  eos_token: "</s>"
+  unk_token: "<unk>"
+  pad_token: "<pad>"
+  mask_token: "<mask>"
+lr: 0.0004
+epochs: 10
+batch_size: 16
