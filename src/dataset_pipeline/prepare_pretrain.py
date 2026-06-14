@@ -21,6 +21,7 @@ DEFAULT_WIKIMEDIA_URL = (
 )
 DEFAULT_HISTORICAL_REPO = "seyoungsong/Open-Korean-Historical-Corpus"
 DEFAULT_TOKENIZER = "skt/kogpt2-base-v2"
+DEFAULT_SOURCES = ("wikimedia", "historical")
 
 
 def parse_args() -> argparse.Namespace:
@@ -42,7 +43,7 @@ def parse_args() -> argparse.Namespace:
         "--sources",
         nargs="+",
         choices=("wikimedia", "historical", "nikl"),
-        default=("wikimedia", "historical", "nikl"),
+        default=DEFAULT_SOURCES,
     )
     parser.add_argument(
         "--wikimedia-dump-url",

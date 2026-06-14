@@ -3,6 +3,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import pyarrow.parquet as pq
 
@@ -12,6 +13,7 @@ from src.dataset_pipeline.adapters import (
     iter_wikimedia_dump,
 )
 from src.dataset_pipeline.builder import DatasetBuilder, normalize_text
+from src.dataset_pipeline.prepare_pretrain import parse_args
 from src.dataset_pipeline.schema import RejectedRecord, SourceDocument
 
 
@@ -24,6 +26,15 @@ class FakeTokenizer:
 
 
 class DatasetAdapterTest(unittest.TestCase):
+    def test_pretrain_cli_defaults_exclude_nikl(self):
+        with patch(
+            "sys.argv",
+            ["prepare_pretrain", "--output-dir", "/tmp/pretrain-test"],
+        ):
+            args = parse_args()
+
+        self.assertEqual(args.sources, ("wikimedia", "historical"))
+
     def test_wikimedia_adapter_keeps_articles_and_rejects_redirects(self):
         xml = """\
 <mediawiki xmlns="http://www.mediawiki.org/xml/export-0.11/">

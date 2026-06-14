@@ -1,10 +1,12 @@
 # 한국어 사전학습 데이터 준비
 
-이 파이프라인은 다음 세 소스를 하나의 정규화된 사전학습 데이터셋으로 만든다.
+현재 파이프라인은 다음 두 소스를 하나의 정규화된 사전학습 데이터셋으로 만든다.
 
 1. 한국어 Wikimedia 공식 덤프
 2. Open Korean Historical Corpus 중 `Modern Korean`
-3. 국립국어원 `WRITTEN`, `NEWSPAPER` 말뭉치
+
+NIKL 말뭉치는 접근 및 수동 준비 부담 때문에 현재 빌드에서 제외했다. 관련
+어댑터는 향후 재검토를 위해 코드에만 유지한다.
 
 출력은 Google Drive의 버전 디렉터리에 저장된다.
 
@@ -14,10 +16,6 @@
     wikimedia/
     historical/
       <hugging-face-revision>/
-    nikl/
-      v1.0/
-        WRITTEN/
-        NEWSPAPER/
   pretrain/
     v1/
       parquet/
@@ -31,7 +29,7 @@
 ## 처리 정책
 
 - 텍스트는 Unicode NFC와 LF 줄바꿈으로 정규화한다.
-- 정규화 후 SHA-256이 같은 문서는 세 소스 전체에서 한 번만 남긴다.
+- 정규화 후 SHA-256이 같은 문서는 선택한 소스 전체에서 한 번만 남긴다.
 - 주제, 안전성, 문서 길이 기반 필터는 아직 적용하지 않는다.
 - Open Korean Historical Corpus는 `language == "Modern Korean"`만 남긴다.
 - 역사 말뭉치는 기본적으로 `copyright == "Public Domain"`도 요구한다.
@@ -43,25 +41,6 @@
 `profile.json`에는 소스별 문서 수, 제거 사유, UTF-8 용량, KoGPT2 토큰 수,
 문서 길이 백분위수, 문자 비율이 기록된다. `samples.jsonl`에는 수동 검토용
 결정론적 샘플이 저장된다.
-
-## NIKL 수동 준비
-
-Hugging Face의 `KETI-AIR/nikl`에는 데이터가 없고 로더만 있다. 국립국어원
-공식 서비스에서 사용 승인을 받은 뒤 `WRITTEN`과 `NEWSPAPER`를 직접
-다운로드해야 한다.
-
-- 공식 서비스: <https://kli.korean.go.kr/>
-- 이용 정책: <https://kli.korean.go.kr/boards/termsInfo.do>
-
-압축을 해제한 뒤 다음 위치에 JSON 파일이 보이도록 정리한다.
-
-```text
-/content/drive/MyDrive/KTB/MyGPT/datasets/raw/nikl/v1.0/WRITTEN/**/*.json
-/content/drive/MyDrive/KTB/MyGPT/datasets/raw/nikl/v1.0/NEWSPAPER/**/*.json
-```
-
-NIKL 원문과 결합 데이터셋은 비공개로 유지한다. 원문, 샘플 본문, Parquet을
-Hugging Face나 W&B에 업로드하지 않는다. W&B에는 집계 통계만 기록할 수 있다.
 
 ## Colab 설치
 
@@ -112,21 +91,8 @@ python -m src.dataset_pipeline.prepare_pretrain \
   --max-accepted-per-source 1000
 ```
 
-### NIKL
-
-```bash
-python -m src.dataset_pipeline.prepare_pretrain \
-  --output-dir /content/drive/MyDrive/KTB/MyGPT/datasets/pretrain/smoke-nikl-v1 \
-  --work-dir /content/mygpt_dataset_work \
-  --raw-cache-dir /content/drive/MyDrive/KTB/MyGPT/datasets/raw \
-  --sources nikl \
-  --nikl-root /content/drive/MyDrive/KTB/MyGPT/datasets/raw/nikl/v1.0 \
-  --nikl-corpora WRITTEN NEWSPAPER \
-  --max-accepted-per-source 1000
-```
-
 각 실행 후 `profile.json`과 `samples.jsonl`을 먼저 검토한다. 정식 빌드를
-시작하기 전에 세 스모크 결과를 Codex와 함께 확인한다.
+시작하기 전에 두 스모크 결과를 Codex와 함께 확인한다.
 
 ## 정식 통합 빌드
 
@@ -144,15 +110,12 @@ DATASET_ROOT=/content/drive/MyDrive/KTB/MyGPT/datasets
 OUTPUT_VERSION=v1
 WORK_DIR=/content/mygpt_dataset_work
 RAW_CACHE_DIR=$DATASET_ROOT/raw
-NIKL_ROOT=$RAW_CACHE_DIR/nikl/v1.0
 ```
 
-필요하면 환경 변수로 변경할 수 있다.
+필요하면 출력 버전을 환경 변수로 변경할 수 있다.
 
 ```bash
-OUTPUT_VERSION=v2 \
-NIKL_ROOT=/content/drive/MyDrive/KTB/MyGPT/datasets/raw/nikl/v1.1 \
-./scripts/prepare_pretrain_colab.sh
+OUTPUT_VERSION=v2 ./scripts/prepare_pretrain_colab.sh
 ```
 
 ## 실패한 빌드

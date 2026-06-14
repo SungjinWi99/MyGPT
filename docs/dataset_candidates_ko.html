@@ -327,11 +327,11 @@
       </header>
 
       <div class="notice">
-        <strong>2026년 6월 14일 선정 완료:</strong>
-        첫 사전학습 빌드는 한국어 Wikimedia 덤프, Open Korean Historical
-        Corpus의 <code>Modern Korean</code> 및 Public Domain 레코드,
-        공식 승인 후 내려받은 NIKL 문어·신문 말뭉치로 진행한다. NIKL 요약
-        데이터는 일반 말뭉치 사전학습에 섞지 않고 이후 SFT 단계에서 다룬다.
+        <strong>2026년 6월 14일 현재 범위:</strong>
+        사전학습 데이터 준비는 한국어 Wikimedia 덤프와 Open Korean Historical
+        Corpus의 <code>Modern Korean</code> 및 Public Domain 레코드만으로
+        진행한다. NIKL은 현재 빌드에서 제외하고 어댑터만 향후 재검토용으로
+        유지한다.
       </div>
 
       <section id="purpose">
@@ -390,8 +390,8 @@
               <tr>
                 <td>3</td>
                 <td>국립국어원 말뭉치</td>
-                <td><span class="badge conditional">조건부 채택</span></td>
-                <td>승인 및 수동 다운로드 후 공식 문어·신문·요약 데이터 보강</td>
+                <td><span class="badge defer">보류</span></td>
+                <td>현재 빌드에서 제외하며 이후 접근 여부 결정 시 재검토</td>
               </tr>
               <tr>
                 <td>4</td>
@@ -404,9 +404,8 @@
         </div>
 
         <p>
-          첫 프로파일링 빌드는 Wikimedia와 Open Korean Historical Corpus의 선별
-          서브셋으로 시작한다. NIKL은 비공식 재배포본이 아니라 사용자가 공식
-          서비스에서 직접 내려받은 파일을 사용해야 한다.
+          현재 프로파일링 빌드는 Wikimedia와 Open Korean Historical Corpus의
+          선별 서브셋만 사용한다.
         </p>
 
         <h3>단일 턴 SFT</h3>
@@ -577,8 +576,9 @@ text is non-empty</code></pre>
           </ul>
 
           <div class="decision conditional">
-            <strong>판단:</strong> 첫 자동 다운로드 경로에서는 제외한다. 사용자가
-            접근 승인을 받고 말뭉치별 조건을 기록한 뒤 활성화한다.
+            <strong>판단:</strong> 현재 데이터셋 빌드에서는 제외한다. 어댑터는
+            저장소에 유지하며, 이후 사용자가 접근을 결정하고 말뭉치별 조건을
+            기록한 새 데이터 버전에서만 활성화한다.
           </div>
         </article>
 

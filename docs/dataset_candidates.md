@@ -4,17 +4,14 @@ Review date: 2026-06-13
 
 ## Selection Update
 
-On 2026-06-14, the initial pretraining build was approved for:
+On 2026-06-14, the current pretraining build was narrowed to:
 
 1. the Korean Wikimedia dump
 2. Open Korean Historical Corpus records whose language is `Modern Korean`
-3. approved NIKL written and newspaper corpora downloaded from the official
-   service
 
 The implementation also keeps the earlier public-domain filter for the
-historical corpus. NIKL summarization is reserved for the later SFT pipeline so
-that article-summary supervision is not mixed into the general-corpus
-pretraining product.
+historical corpus. NIKL is excluded from the current build; its adapter remains
+available for a later decision.
 
 ## Purpose
 
@@ -43,12 +40,11 @@ dataset manifest must preserve each source's exact terms and revision.
 | --- | --- | --- | --- |
 | 1 | Korean Wikimedia dump | Include | Modern encyclopedic Korean baseline |
 | 2 | Open Korean Historical Corpus | Conditional include | Public-domain news and institutional text after language/source filtering |
-| 3 | National Institute of Korean Language corpora | Conditional include | Official written, newspaper, and summary corpora after user approval and manual download |
+| 3 | National Institute of Korean Language corpora | Defer | Excluded from the current build; reconsider only after a later access decision |
 | 4 | KOREAN-WEBTEXT | Defer | Fallback only if preferred sources remain below the usable-token target |
 
-The first profiling build should start with Wikimedia and selected Open Korean
-Historical Corpus subsets. NIKL should use files downloaded by the user from the
-official service, not an unofficial redistributed copy.
+The current profiling build uses Wikimedia and selected Open Korean Historical
+Corpus subsets only.
 
 ### Single-Turn SFT
 
@@ -161,9 +157,9 @@ retention beyond the approved period. Therefore:
 - restricted source text must not be uploaded to Hugging Face or W&B
 - a combined dataset containing NIKL text remains private and restricted
 
-NIKL is not part of the first automated download path. It becomes active only
-after the user has approved access and the exact corpus-specific conditions are
-recorded.
+NIKL is excluded from the current dataset build. The adapter remains in the
+repository so a future dataset version can activate it after the user approves
+access and the exact corpus-specific conditions are recorded.
 
 ### 4. Third-Party Wikipedia Builds
 

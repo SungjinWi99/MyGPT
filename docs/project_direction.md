@@ -211,6 +211,10 @@ news, and public or institutional documents. General web and blog text is not a
 default source. It may be considered later only if the preferred sources cannot
 supply enough usable tokens after technical filtering and deduplication.
 
+The current v1 profiling build uses only the Korean Wikimedia dump and the
+`Modern Korean` plus `Public Domain` subset of Open Korean Historical Corpus.
+NIKL is deferred and is not part of the current build.
+
 The preferred-source corpus is considered sufficient when it contains at least
 500 million usable tokens after filtering and deduplication. If it falls below
 that threshold, search for additional public or institutional sources before
