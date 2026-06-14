@@ -17,7 +17,7 @@ from src.dataset_pipeline.builder import DatasetBuilder, sha256_file
 
 DEFAULT_WIKIMEDIA_URL = (
     "https://dumps.wikimedia.org/kowiki/20260601/"
-    "kowiki-20260601-pages-articles-multistream.xml.bz2"
+    "kowiki-20260601-pages-articles.xml.bz2"
 )
 DEFAULT_HISTORICAL_REPO = "seyoungsong/Open-Korean-Historical-Corpus"
 DEFAULT_TOKENIZER = "skt/kogpt2-base-v2"
@@ -111,17 +111,18 @@ def _wikimedia_sha1_url(dump_url: str) -> str:
     return f"{parsed.scheme}://{parsed.netloc}{directory}/kowiki-{dump_date}-sha1sums.txt"
 
 
+def _sha1_from_checksum_text(checksum_text: str, filename: str) -> str:
+    for line in checksum_text.splitlines():
+        parts = line.split()
+        if len(parts) >= 2 and parts[-1].lstrip("*") == filename:
+            return parts[0]
+    raise ValueError(f"SHA1 entry not found for {filename}")
+
+
 def verify_wikimedia_sha1(dump_url: str, dump_path: Path) -> str:
     response = requests.get(_wikimedia_sha1_url(dump_url), timeout=60)
     response.raise_for_status()
-    expected = None
-    for line in response.text.splitlines():
-        parts = line.split()
-        if len(parts) >= 2 and parts[-1].lstrip("*") == dump_path.name:
-            expected = parts[0]
-            break
-    if expected is None:
-        raise ValueError(f"SHA1 entry not found for {dump_path.name}")
+    expected = _sha1_from_checksum_text(response.text, dump_path.name)
 
     digest = hashlib.sha1()
     with dump_path.open("rb") as handle:

@@ -67,15 +67,18 @@ Recommended source:
 
 - <https://dumps.wikimedia.org/kowiki/20260601/>
 - target file:
-  `kowiki-20260601-pages-articles-multistream.xml.bz2`
-- compressed size reported by Wikimedia: approximately 1.3 GB
-- checksums are published alongside the dump
+  `kowiki-20260601-pages-articles.xml.bz2`
+- compressed size reported by Wikimedia: 1,294,057,804 bytes
+- SHA1 published by Wikimedia: `b7f0d677655645fa56375d8fcaad1194cca92d91`
 - content license: CC BY-SA and GFDL terms applicable to Wikipedia content
 
 The direct Wikimedia dump is preferred over a third-party cleaned copy because
 the snapshot date, file name, checksum, and upstream terms can be recorded
 unambiguously. The 2026-06-01 article dump was complete when reviewed, although
 unrelated full-history dump jobs on that date were still in progress.
+The non-multistream combined file is used because Wikimedia publishes its SHA1
+in `kowiki-20260601-sha1sums.txt`; the multistream combined file is not listed
+there.
 
 For a processed-size reference, Hugging Face's
 [`wikimedia/wikipedia`](https://huggingface.co/datasets/wikimedia/wikipedia)

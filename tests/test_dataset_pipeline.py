@@ -13,7 +13,11 @@ from src.dataset_pipeline.adapters import (
     iter_wikimedia_dump,
 )
 from src.dataset_pipeline.builder import DatasetBuilder, normalize_text
-from src.dataset_pipeline.prepare_pretrain import parse_args
+from src.dataset_pipeline.prepare_pretrain import (
+    DEFAULT_WIKIMEDIA_URL,
+    _sha1_from_checksum_text,
+    parse_args,
+)
 from src.dataset_pipeline.schema import RejectedRecord, SourceDocument
 
 
@@ -26,6 +30,20 @@ class FakeTokenizer:
 
 
 class DatasetAdapterTest(unittest.TestCase):
+    def test_default_wikimedia_dump_has_a_published_checksum_name(self):
+        filename = DEFAULT_WIKIMEDIA_URL.rsplit("/", 1)[-1]
+        published_sha1 = "b7f0d677655645fa56375d8fcaad1194cca92d91"
+        checksum_text = f"{published_sha1}  {filename}\n"
+
+        self.assertEqual(
+            filename,
+            "kowiki-20260601-pages-articles.xml.bz2",
+        )
+        self.assertEqual(
+            _sha1_from_checksum_text(checksum_text, filename),
+            published_sha1,
+        )
+
     def test_pretrain_cli_defaults_exclude_nikl(self):
         with patch(
             "sys.argv",

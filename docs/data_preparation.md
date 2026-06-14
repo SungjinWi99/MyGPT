@@ -64,8 +64,10 @@ pip install -r requirements.txt
 
 ### Wikimedia
 
-최초 실행 시 약 1.3GB 공식 덤프를 `raw/wikimedia`에 내려받고 체크섬을
-검증한다.
+최초 실행 시 약 1.29GB 공식 `pages-articles.xml.bz2` 덤프를
+`raw/wikimedia`에 내려받고 Wikimedia가 공개한 SHA1 체크섬을 검증한다.
+`multistream` 결합 파일은 공식 `sha1sums.txt`에 체크섬이 없어 기본 입력으로
+사용하지 않는다.
 
 ```bash
 python -m src.dataset_pipeline.prepare_pretrain \
