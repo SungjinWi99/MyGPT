@@ -3,6 +3,15 @@
 A small decoder-only Transformer language model implemented with PyTorch and
 trained on Korean instruction data.
 
+See [docs/project_direction.md](docs/project_direction.md) for the project goal,
+Colab/W&B workflow, and the initial dataset improvement direction.
+See [docs/dataset_candidates.md](docs/dataset_candidates.md) for the first
+Korean pretraining and SFT dataset review.
+The [Korean HTML version](docs/dataset_candidates_ko.html) is available for
+browser viewing.
+See [docs/data_preparation.md](docs/data_preparation.md) for the accepted
+pretraining sources, Colab commands, and Google Drive layout.
+
 ## Setup
 
 Python 3.10 or newer is required.
