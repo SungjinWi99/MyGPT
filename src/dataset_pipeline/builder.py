@@ -150,6 +150,7 @@ class Profile:
     validation_records: int = 0
     rejected: Counter = field(default_factory=Counter)
     characters: Counter = field(default_factory=Counter)
+    upstream_sources: Counter = field(default_factory=Counter)
     length_sample: list[int] = field(default_factory=list)
     token_length_sample: list[int] = field(default_factory=list)
     reservoir_seen: int = 0
@@ -164,6 +165,7 @@ class Profile:
         split: str,
         rng: random.Random,
         reservoir_size: int,
+        upstream_source: str | None = None,
     ) -> None:
         self.accepted_records += 1
         self.accepted_bytes_utf8 += len(text.encode("utf-8"))
@@ -176,6 +178,8 @@ class Profile:
         self.characters["digit"] += len(_DIGIT_RE.findall(text))
         self.characters["replacement"] += text.count("\ufffd")
         self.characters["total"] += len(text)
+        if upstream_source:
+            self.upstream_sources[upstream_source] += 1
 
         self.reservoir_seen += 1
         if len(self.length_sample) < reservoir_size:
@@ -217,6 +221,7 @@ def _profile_dict(profile: Profile) -> dict[str, Any]:
         "rejected": dict(sorted(profile.rejected.items())),
         "character_counts": dict(sorted(profile.characters.items())),
         "character_ratios": ratios,
+        "accepted_upstream_sources": dict(sorted(profile.upstream_sources.items())),
         "document_char_percentiles": _percentiles(profile.length_sample),
         "document_token_percentiles": _percentiles(profile.token_length_sample),
         "percentile_sample_size": len(profile.length_sample),
@@ -323,6 +328,7 @@ class DatasetBuilder:
                 split,
                 self.rngs[stream_name],
                 self.reservoir_size,
+                str(document.metadata.get("upstream_source") or "") or None,
             )
             sample_row = {
                 key: row[key]

@@ -7,13 +7,15 @@ Review date: 2026-06-15
 On 2026-06-15, the current pretraining build was changed to:
 
 1. the Korean Wikimedia dump
-2. `HAERAE-HUB/KOREAN-WEBTEXT`
+2. the `news`, `science-webtext`, `law`, and `cultureY` subsets of
+   `HAERAE-HUB/KOREAN-WEBTEXT`
 
 Open Korean Historical Corpus was removed after the `gaksa_modern.jsonl` smoke
 test accepted zero records: 36,595 `Modern Korean` records had null copyright
 metadata, and the source was dominated by Hanja and old-Hangul text. NIKL is
 also excluded from the current build. Both adapters remain available for later
-dataset versions.
+dataset versions. OSCAR and CC100 web-crawl families are deferred after sample
+review found substantially wider quality variance.
 
 ## Purpose
 
@@ -28,7 +30,8 @@ The review follows the current project constraints:
 - no translated or synthetic data in v1
 - personal research use may include non-commercial or restricted data
 - encyclopedia, news, and public or institutional documents before general web
-- exact duplicate removal only until source-specific profiling is complete
+- exact duplicate removal, plus source-specific rules only after profiling and
+  sample review
 - existing `skt/kogpt2-base-v2` tokenizer for token counting and training
 
 License notes below are engineering screening notes, not legal advice. The
@@ -199,11 +202,24 @@ translated-looking text. The dataset card declares no explicit license. It also
 states that upstream processing already applied exact line deduplication plus
 first-15-token and last-15-token deduplication.
 
-Decision on 2026-06-15: include for profiling after the historical-corpus
-candidate failed the modern-Korean selection goal. Preserve the exact Hub
-revision, upstream source, upstream token count, and undeclared-license status.
-Do not redistribute the resulting combined dataset until usage rights have been
-reviewed.
+OSCAR is a multilingual corpus family automatically extracted and
+language-classified from Common Crawl. Names such as `oscar2109`, `oscar2201`,
+and `oscar2301` identify releases or crawl snapshots, not quality tiers. Their
+broad web coverage is useful for scale but also produces much wider variation
+in spam, SEO text, boilerplate, and translation-like prose. CC100 has a similar
+general web-crawl role in this decision. See the
+[OSCAR paper](https://arxiv.org/abs/2201.06642) for its document-oriented crawl
+and language-classification pipeline.
+
+Decision on 2026-06-15: keep `news`, `science-webtext`, `law`, and `cultureY`
+by default. Defer OSCAR and CC100 families. Apply only conservative obvious
+spam checks for adult-service and gambling advertisements, multiple trading
+promotion markers, and highly repeated four-word phrases. This is a technical
+quality rule rather than topic or safety filtering.
+
+Preserve the exact Hub revision, upstream source, upstream token count, filter
+configuration, and undeclared-license status. Do not redistribute the resulting
+combined dataset until usage rights have been reviewed.
 
 ## SFT Candidates
 

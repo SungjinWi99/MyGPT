@@ -12,6 +12,7 @@ args=(
   --work-dir "${WORK_DIR}"
   --raw-cache-dir "${RAW_CACHE_DIR}"
   --sources wikimedia webtext
+  --webtext-upstream-sources news science-webtext law cultureY
   --shard-rows 100000
   --tokenize-batch-size 128
   --validation-fraction 0.005

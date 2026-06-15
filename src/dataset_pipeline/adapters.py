@@ -2,6 +2,7 @@ import bz2
 import json
 import re
 import xml.etree.ElementTree as ET
+from collections import Counter
 from collections.abc import Iterable, Iterator
 from pathlib import Path
 from urllib.parse import quote
@@ -15,11 +16,37 @@ from src.dataset_pipeline.schema import RejectedRecord, SourceDocument
 
 Record = SourceDocument | RejectedRecord
 
+DEFAULT_WEBTEXT_UPSTREAM_SOURCES = (
+    "news",
+    "science-webtext",
+    "law",
+    "cultureY",
+)
+
 _WIKI_TABLE_RE = re.compile(r"\{\|.*?\|\}", flags=re.DOTALL)
 _WIKI_COMMENT_RE = re.compile(r"<!--.*?-->", flags=re.DOTALL)
 _WIKI_CATEGORY_RE = re.compile(
     r"^\s*\[\[(?:분류|Category|파일|File|그림|Image):.*?\]\]\s*$",
     flags=re.IGNORECASE | re.MULTILINE,
+)
+_WEBTEXT_ADULT_SPAM_MARKERS = (
+    "출장안마",
+    "출장마사지",
+    "출장샵",
+    "스웨디시마사지",
+)
+_WEBTEXT_GAMBLING_SPAM_MARKERS = (
+    "바카라",
+    "먹튀",
+    "토토사이트",
+    "카지노사이트",
+)
+_WEBTEXT_TRADING_SPAM_MARKERS = (
+    "바이너리 옵션",
+    "외환 거래 플랫폼",
+    "forex 거래",
+    "cfd 거래",
+    "스왑 요금",
 )
 
 
@@ -192,8 +219,15 @@ def iter_korean_webtext_parquet(
     paths: Iterable[Path],
     *,
     batch_size: int = 128,
+    allowed_upstream_sources: Iterable[str] | None = DEFAULT_WEBTEXT_UPSTREAM_SOURCES,
+    reject_obvious_spam: bool = True,
 ) -> Iterator[Record]:
     source = "korean_webtext"
+    allowed_sources = (
+        None
+        if allowed_upstream_sources is None
+        else {value.lower() for value in allowed_upstream_sources}
+    )
 
     for path in paths:
         parquet_file = pq.ParquetFile(path)
@@ -215,11 +249,29 @@ def iter_korean_webtext_parquet(
             columns=sorted(required_columns),
         ):
             for row in batch.to_pylist():
+                upstream_source = str(row.get("source") or "")
+                if (
+                    allowed_sources is not None
+                    and upstream_source.lower() not in allowed_sources
+                ):
+                    yield RejectedRecord(
+                        source=source,
+                        reason=f"upstream_source_filtered:{upstream_source or 'missing'}",
+                    )
+                    row_offset += 1
+                    continue
+
                 text = str(row.get("text") or "")
                 if not text.strip():
                     yield RejectedRecord(source=source, reason="empty_source_text")
                     row_offset += 1
                     continue
+                if reject_obvious_spam:
+                    spam_reason = _webtext_spam_reason(text)
+                    if spam_reason is not None:
+                        yield RejectedRecord(source=source, reason=spam_reason)
+                        row_offset += 1
+                        continue
 
                 upstream_index = row.get("__index_level_0__")
                 source_id = f"{path.name}:{upstream_index}"
@@ -234,12 +286,43 @@ def iter_korean_webtext_parquet(
                     language="ko",
                     corpus="KOREAN-WEBTEXT",
                     metadata={
-                        "upstream_source": row.get("source"),
+                        "upstream_source": upstream_source,
                         "upstream_token_count": row.get("token_count"),
                         "raw_file": path.name,
                     },
                 )
                 row_offset += 1
+
+
+def _webtext_spam_reason(text: str) -> str | None:
+    lowered = text.lower()
+    adult_hits = sum(
+        lowered.count(marker) for marker in _WEBTEXT_ADULT_SPAM_MARKERS
+    )
+    if adult_hits >= 2:
+        return "obvious_adult_spam"
+    gambling_hits = sum(
+        lowered.count(marker) for marker in _WEBTEXT_GAMBLING_SPAM_MARKERS
+    )
+    if gambling_hits >= 2:
+        return "obvious_gambling_spam"
+
+    trading_hits = sum(
+        marker in lowered for marker in _WEBTEXT_TRADING_SPAM_MARKERS
+    )
+    if trading_hits >= 2:
+        return "obvious_trading_spam"
+
+    words = lowered.split()
+    if len(words) >= 80:
+        four_grams = Counter(
+            tuple(words[index : index + 4])
+            for index in range(len(words) - 3)
+        )
+        repetition_threshold = max(8, (len(words) + 65) // 66)
+        if four_grams and max(four_grams.values()) >= repetition_threshold:
+            return "repeated_phrase_spam"
+    return None
 
 
 def _iter_ijson_documents(path: Path, prefix: str) -> Iterator[dict]:

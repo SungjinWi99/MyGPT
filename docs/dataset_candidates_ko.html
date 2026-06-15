@@ -329,9 +329,11 @@
       <div class="notice">
         <strong>2026년 6월 15일 현재 범위:</strong>
         사전학습 데이터 준비는 한국어 Wikimedia 덤프와
-        <code>HAERAE-HUB/KOREAN-WEBTEXT</code>로 진행한다. 역사 말뭉치는
-        스모크 결과가 한자·옛한글 중심이고 목표 필터에서 0건이 채택되어
-        제외했다. NIKL도 현재 제외하며 두 어댑터는 향후 재검토용으로 유지한다.
+        <code>HAERAE-HUB/KOREAN-WEBTEXT</code>의 <code>news</code>,
+        <code>science-webtext</code>, <code>law</code>,
+        <code>cultureY</code> 하위 소스로 진행한다. 역사 말뭉치는 스모크 결과가
+        한자·옛한글 중심이고 목표 필터에서 0건이 채택되어 제외했다. OSCAR와
+        CC100 범용 웹 크롤링 계열도 현재 보류한다.
       </div>
 
       <section id="purpose">
@@ -349,7 +351,7 @@
           <li>v1에는 번역 데이터와 합성 데이터를 포함하지 않는다.</li>
           <li>개인 연구 목적이라면 비상업 또는 이용 제한 데이터도 검토할 수 있다.</li>
           <li>일반 웹 데이터보다 백과사전, 뉴스, 공공·기관 문서를 우선한다.</li>
-          <li>소스별 프로파일링 전까지는 완전 중복만 제거한다.</li>
+          <li>완전 중복을 제거하고, 소스별 추가 규칙은 프로파일과 샘플 검토 후에만 적용한다.</li>
           <li>토큰 수 계산과 학습에는 기존 <code>skt/kogpt2-base-v2</code> 토크나이저를 사용한다.</li>
         </ul>
 
@@ -404,7 +406,9 @@
         </div>
 
         <p>
-          현재 프로파일링 빌드는 Wikimedia와 KOREAN-WEBTEXT를 사용한다.
+          현재 프로파일링 빌드는 Wikimedia와 KOREAN-WEBTEXT의
+          <code>news</code>, <code>science-webtext</code>,
+          <code>law</code>, <code>cultureY</code> 하위 소스를 사용한다.
         </p>
 
         <h3>단일 턴 SFT</h3>
@@ -633,11 +637,27 @@ text is non-empty</code></pre>
             중복과 첫·마지막 15토큰 기준 중복 제거가 이미 적용되었다.
           </p>
 
+          <p>
+            OSCAR는 Common Crawl에서 웹 페이지를 수집한 뒤 언어별 문서를
+            자동 추출한 다국어 말뭉치 계열이다. <code>oscar2109</code>,
+            <code>oscar2201</code>, <code>oscar2301</code>은 품질 등급이
+            아니라 릴리스 또는 크롤링 스냅샷 이름이다. 규모 확보에는 유용하지만
+            광고, SEO 문서, 반복 문구, 번역체가 함께 섞일 가능성이 높다.
+            CC100도 이번 결정에서는 같은 범용 웹 크롤링 계열로 취급한다.
+            자세한 수집·정제 구조는
+            <a href="https://arxiv.org/abs/2201.06642">OSCAR 논문</a>에서
+            확인할 수 있다.
+          </p>
+
           <div class="decision include">
-            <strong>2026년 6월 15일 판단:</strong> 역사 말뭉치 후보가 현대
-            한국어 목표에 맞지 않아 프로파일링 대상으로 채택한다. Hub 리비전,
-            상류 소스, 상류 토큰 수, 라이선스 미표기 상태를 보존하고 사용 조건
-            검토 전까지 결합 데이터셋은 재배포하지 않는다.
+            <strong>2026년 6월 15일 판단:</strong>
+            <code>news</code>, <code>science-webtext</code>,
+            <code>law</code>, <code>cultureY</code>만 기본 채택하고 OSCAR와
+            CC100 계열은 보류한다. 성인 서비스·도박 광고, 여러 금융 홍보 문구,
+            과도하게 반복되는 4단어 구절처럼 명백한 기술적 스팸만 보수적으로
+            제거한다. 이는 주제 또는 안전성 필터가 아니다. Hub 리비전, 상류
+            소스, 상류 토큰 수, 필터 설정, 라이선스 미표기 상태를 보존하고 사용
+            조건 검토 전까지 결합 데이터셋은 재배포하지 않는다.
           </div>
         </article>
       </section>

@@ -67,11 +67,12 @@ Technical validation such as removing empty, malformed, or exact duplicate
 records still applies because it directly affects training quality.
 
 The initial deduplication policy removes exact duplicates only. Near-duplicate
-methods, source-specific quality filters, document-length thresholds, boilerplate
-removal, and detailed mixing rules are intentionally deferred until candidate
-datasets have been selected, profiled, and sampled manually. Those policies
-must be based on observed source characteristics rather than decided in the
-abstract.
+methods, document-length thresholds, broad boilerplate removal, and detailed
+mixing rules remain deferred. After KOREAN-WEBTEXT was profiled and sampled,
+one source-specific quality rule was approved: keep `news`, `science-webtext`,
+`law`, and `cultureY` by default, defer OSCAR and CC100 web-crawl families, and
+remove only obvious adult-service, gambling, multi-marker trading, or repeated
+phrase spam. This is a technical quality filter, not topic or safety filtering.
 
 Research-only and personal-use datasets may be included. Every source must
 retain its license and usage restrictions in the generated manifest. A combined
@@ -215,7 +216,10 @@ The current v1 profiling build uses the Korean Wikimedia dump and
 `HAERAE-HUB/KOREAN-WEBTEXT`. Open Korean Historical Corpus was removed after
 the smoke candidate produced no accepted records under the intended filter and
 was found to be dominated by Hanja and old-Hangul material. NIKL remains
-deferred.
+deferred. Within KOREAN-WEBTEXT, the current build keeps `news`,
+`science-webtext`, `law`, and `cultureY`. OSCAR and CC100 families are retained
+in the raw cache but excluded from the normalized dataset until a separate
+quality and mixture experiment justifies their inclusion.
 
 The preferred-source corpus is considered sufficient when it contains at least
 500 million usable tokens after filtering and deduplication. If it falls below

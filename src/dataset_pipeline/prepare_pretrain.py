@@ -8,6 +8,7 @@ from huggingface_hub import HfApi, snapshot_download
 from transformers import AutoTokenizer
 
 from src.dataset_pipeline.adapters import (
+    DEFAULT_WEBTEXT_UPSTREAM_SOURCES,
     iter_historical_jsonl,
     iter_korean_webtext_parquet,
     iter_nikl_corpus,
@@ -78,6 +79,17 @@ def parse_args() -> argparse.Namespace:
         "--webtext-allow-pattern",
         action="append",
         dest="webtext_allow_patterns",
+    )
+    parser.add_argument(
+        "--webtext-upstream-sources",
+        nargs="+",
+        default=DEFAULT_WEBTEXT_UPSTREAM_SOURCES,
+        help='Allowed upstream sources, or "ANY" to disable source filtering.',
+    )
+    parser.add_argument(
+        "--webtext-keep-obvious-spam",
+        action="store_true",
+        help="Disable the conservative adult, gambling, trading, and repetition filter.",
     )
     parser.add_argument("--nikl-root", type=Path)
     parser.add_argument(
@@ -303,6 +315,12 @@ def main() -> None:
             raise FileNotFoundError(
                 f"No Parquet files found under {webtext_root}"
             )
+        allowed_upstream_sources = (
+            None
+            if len(args.webtext_upstream_sources) == 1
+            and args.webtext_upstream_sources[0].upper() == "ANY"
+            else list(args.webtext_upstream_sources)
+        )
         source_config["webtext"] = {
             "repo_id": args.webtext_repo,
             "revision": webtext_revision,
@@ -310,6 +328,8 @@ def main() -> None:
             "file_count": len(webtext_paths),
             "downloaded_bytes": sum(path.stat().st_size for path in webtext_paths),
             "license": "Not declared in the dataset card",
+            "allowed_upstream_sources": allowed_upstream_sources,
+            "obvious_spam_filter": not args.webtext_keep_obvious_spam,
             "upstream_processing": [
                 "sentence and document quality filters",
                 "exact line deduplication",
@@ -320,7 +340,11 @@ def main() -> None:
         streams.append(
             (
                 "webtext",
-                iter_korean_webtext_parquet(webtext_paths),
+                iter_korean_webtext_parquet(
+                    webtext_paths,
+                    allowed_upstream_sources=allowed_upstream_sources,
+                    reject_obvious_spam=not args.webtext_keep_obvious_spam,
+                ),
             )
         )
 

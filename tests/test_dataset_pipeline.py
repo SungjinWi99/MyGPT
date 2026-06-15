@@ -9,6 +9,8 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 from src.dataset_pipeline.adapters import (
+    DEFAULT_WEBTEXT_UPSTREAM_SOURCES,
+    _webtext_spam_reason,
     iter_historical_jsonl,
     iter_korean_webtext_parquet,
     iter_nikl_corpus,
@@ -54,6 +56,10 @@ class DatasetAdapterTest(unittest.TestCase):
             args = parse_args()
 
         self.assertEqual(args.sources, ("wikimedia", "webtext"))
+        self.assertEqual(
+            args.webtext_upstream_sources,
+            DEFAULT_WEBTEXT_UPSTREAM_SOURCES,
+        )
 
     def test_wikimedia_adapter_keeps_articles_and_rejects_redirects(self):
         xml = """\
@@ -125,10 +131,14 @@ class DatasetAdapterTest(unittest.TestCase):
 
     def test_webtext_adapter_streams_parquet_rows(self):
         table = {
-            "text": ["첫 번째 웹 문서입니다.", ""],
-            "source": ["oscar2201", "cc100"],
-            "token_count": [12, 0],
-            "__index_level_0__": [101, 102],
+            "text": [
+                "첫 번째 뉴스 문서입니다.",
+                "OSCAR 문서입니다.",
+                "",
+            ],
+            "source": ["news", "oscar2201", "law"],
+            "token_count": [12, 10, 0],
+            "__index_level_0__": [101, 102, 103],
         }
         with tempfile.TemporaryDirectory() as temp_dir:
             path = Path(temp_dir) / "train-00000.parquet"
@@ -138,15 +148,53 @@ class DatasetAdapterTest(unittest.TestCase):
             )
             records = list(iter_korean_webtext_parquet([path], batch_size=1))
 
-        self.assertEqual(len(records), 2)
+        self.assertEqual(len(records), 3)
         self.assertIsInstance(records[0], SourceDocument)
         self.assertEqual(
             records[0].source_id,
             "train-00000.parquet:101",
         )
-        self.assertEqual(records[0].metadata["upstream_source"], "oscar2201")
+        self.assertEqual(records[0].metadata["upstream_source"], "news")
         self.assertIsInstance(records[1], RejectedRecord)
-        self.assertEqual(records[1].reason, "empty_source_text")
+        self.assertEqual(
+            records[1].reason,
+            "upstream_source_filtered:oscar2201",
+        )
+        self.assertIsInstance(records[2], RejectedRecord)
+        self.assertEqual(records[2].reason, "empty_source_text")
+
+    def test_webtext_spam_filter_is_conservative(self):
+        self.assertEqual(
+            _webtext_spam_reason("출장안마 " * 10),
+            "obvious_adult_spam",
+        )
+        self.assertIsNone(
+            _webtext_spam_reason(
+                "뉴스 기사에서 출장마사지 광고 문제를 한 차례 언급했다."
+            )
+        )
+        self.assertEqual(
+            _webtext_spam_reason(
+                "바이너리 옵션과 외환 거래 플랫폼을 홍보합니다."
+            ),
+            "obvious_trading_spam",
+        )
+        self.assertIsNone(
+            _webtext_spam_reason(
+                "금융당국이 외환시장 제도 개선 방안을 발표했다."
+            )
+        )
+        self.assertEqual(
+            _webtext_spam_reason("반복 문구 광고 입니다 " * 20),
+            "repeated_phrase_spam",
+        )
+        self.assertIsNone(
+            _webtext_spam_reason(
+                " ".join(f"서로다른단어{index}" for index in range(500))
+                + " "
+                + ("공식 서비스센터에서 무상으로 수리 받을 수 있다 " * 5)
+            )
+        )
 
     def test_nikl_adapter_reads_written_documents(self):
         payload = {
@@ -238,6 +286,10 @@ class DatasetBuilderTest(unittest.TestCase):
         self.assertEqual(
             manifest["profile"]["sources"]["source_a"]["rejected"]["adapter_rejection"],
             1,
+        )
+        self.assertEqual(
+            manifest["profile"]["sources"]["source_a"]["accepted_upstream_sources"],
+            {},
         )
 
     def test_normalization_is_stable(self):
