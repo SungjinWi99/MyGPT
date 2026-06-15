@@ -8,6 +8,7 @@ from urllib.parse import quote
 
 import ijson
 import mwparserfromhell
+import pyarrow.parquet as pq
 
 from src.dataset_pipeline.schema import RejectedRecord, SourceDocument
 
@@ -185,6 +186,60 @@ def iter_historical_jsonl(
                     corpus=str(row.get("corpus") or ""),
                     metadata=metadata,
                 )
+
+
+def iter_korean_webtext_parquet(
+    paths: Iterable[Path],
+    *,
+    batch_size: int = 128,
+) -> Iterator[Record]:
+    source = "korean_webtext"
+
+    for path in paths:
+        parquet_file = pq.ParquetFile(path)
+        required_columns = {
+            "text",
+            "source",
+            "token_count",
+            "__index_level_0__",
+        }
+        available_columns = set(parquet_file.schema_arrow.names)
+        missing_columns = required_columns - available_columns
+        if missing_columns:
+            missing = ", ".join(sorted(missing_columns))
+            raise ValueError(f"Missing KOREAN-WEBTEXT columns in {path}: {missing}")
+
+        row_offset = 0
+        for batch in parquet_file.iter_batches(
+            batch_size=batch_size,
+            columns=sorted(required_columns),
+        ):
+            for row in batch.to_pylist():
+                text = str(row.get("text") or "")
+                if not text.strip():
+                    yield RejectedRecord(source=source, reason="empty_source_text")
+                    row_offset += 1
+                    continue
+
+                upstream_index = row.get("__index_level_0__")
+                source_id = f"{path.name}:{upstream_index}"
+                if upstream_index is None:
+                    source_id = f"{path.name}:row-{row_offset}"
+
+                yield SourceDocument(
+                    source=source,
+                    source_id=source_id,
+                    text=text,
+                    license="Not declared in the dataset card",
+                    language="ko",
+                    corpus="KOREAN-WEBTEXT",
+                    metadata={
+                        "upstream_source": row.get("source"),
+                        "upstream_token_count": row.get("token_count"),
+                        "raw_file": path.name,
+                    },
+                )
+                row_offset += 1
 
 
 def _iter_ijson_documents(path: Path, prefix: str) -> Iterator[dict]:

@@ -211,9 +211,11 @@ news, and public or institutional documents. General web and blog text is not a
 default source. It may be considered later only if the preferred sources cannot
 supply enough usable tokens after technical filtering and deduplication.
 
-The current v1 profiling build uses only the Korean Wikimedia dump and the
-`Modern Korean` plus `Public Domain` subset of Open Korean Historical Corpus.
-NIKL is deferred and is not part of the current build.
+The current v1 profiling build uses the Korean Wikimedia dump and
+`HAERAE-HUB/KOREAN-WEBTEXT`. Open Korean Historical Corpus was removed after
+the smoke candidate produced no accepted records under the intended filter and
+was found to be dominated by Hanja and old-Hangul material. NIKL remains
+deferred.
 
 The preferred-source corpus is considered sufficient when it contains at least
 500 million usable tokens after filtering and deduplication. If it falls below

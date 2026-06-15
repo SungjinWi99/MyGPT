@@ -9,6 +9,7 @@ from transformers import AutoTokenizer
 
 from src.dataset_pipeline.adapters import (
     iter_historical_jsonl,
+    iter_korean_webtext_parquet,
     iter_nikl_corpus,
     iter_wikimedia_dump,
 )
@@ -20,8 +21,9 @@ DEFAULT_WIKIMEDIA_URL = (
     "kowiki-20260601-pages-articles.xml.bz2"
 )
 DEFAULT_HISTORICAL_REPO = "seyoungsong/Open-Korean-Historical-Corpus"
+DEFAULT_WEBTEXT_REPO = "HAERAE-HUB/KOREAN-WEBTEXT"
 DEFAULT_TOKENIZER = "skt/kogpt2-base-v2"
-DEFAULT_SOURCES = ("wikimedia", "historical")
+DEFAULT_SOURCES = ("wikimedia", "webtext")
 
 
 def parse_args() -> argparse.Namespace:
@@ -42,7 +44,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--sources",
         nargs="+",
-        choices=("wikimedia", "historical", "nikl"),
+        choices=("wikimedia", "webtext", "historical", "nikl"),
         default=DEFAULT_SOURCES,
     )
     parser.add_argument(
@@ -65,6 +67,17 @@ def parse_args() -> argparse.Namespace:
         "--historical-copyright",
         default="Public Domain",
         help='Exact copyright value to keep, or "ANY" to disable this filter.',
+    )
+    parser.add_argument(
+        "--webtext-repo",
+        default=DEFAULT_WEBTEXT_REPO,
+    )
+    parser.add_argument("--webtext-revision")
+    parser.add_argument("--webtext-root", type=Path)
+    parser.add_argument(
+        "--webtext-allow-pattern",
+        action="append",
+        dest="webtext_allow_patterns",
     )
     parser.add_argument("--nikl-root", type=Path)
     parser.add_argument(
@@ -148,6 +161,10 @@ def _resolve_model_revision(model_id: str, revision: str | None) -> str:
 
 def _historical_paths(root: Path) -> list[Path]:
     return sorted(root.rglob("*.jsonl"))
+
+
+def _webtext_paths(root: Path) -> list[Path]:
+    return sorted(root.rglob("*.parquet"))
 
 
 def _nikl_inventory(root: Path, corpora: tuple[str, ...] | list[str]) -> list[dict]:
@@ -260,6 +277,50 @@ def main() -> None:
                     required_language="Modern Korean",
                     required_copyright=required_copyright,
                 ),
+            )
+        )
+
+    if "webtext" in args.sources:
+        webtext_revision = _resolve_dataset_revision(
+            args.webtext_repo,
+            args.webtext_revision,
+        )
+        if args.webtext_root is not None:
+            webtext_root = args.webtext_root
+        else:
+            allow_patterns = args.webtext_allow_patterns or ["data/*.parquet"]
+            webtext_root = Path(
+                snapshot_download(
+                    repo_id=args.webtext_repo,
+                    repo_type="dataset",
+                    revision=webtext_revision,
+                    local_dir=raw_cache_dir / "webtext" / webtext_revision,
+                    allow_patterns=allow_patterns,
+                )
+            )
+        webtext_paths = _webtext_paths(webtext_root)
+        if not webtext_paths:
+            raise FileNotFoundError(
+                f"No Parquet files found under {webtext_root}"
+            )
+        source_config["webtext"] = {
+            "repo_id": args.webtext_repo,
+            "revision": webtext_revision,
+            "local_root": str(webtext_root),
+            "file_count": len(webtext_paths),
+            "downloaded_bytes": sum(path.stat().st_size for path in webtext_paths),
+            "license": "Not declared in the dataset card",
+            "upstream_processing": [
+                "sentence and document quality filters",
+                "exact line deduplication",
+                "first 15 token deduplication",
+                "last 15 token deduplication",
+            ],
+        }
+        streams.append(
+            (
+                "webtext",
+                iter_korean_webtext_parquet(webtext_paths),
             )
         )
 

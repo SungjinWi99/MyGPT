@@ -3,10 +3,11 @@
 현재 파이프라인은 다음 두 소스를 하나의 정규화된 사전학습 데이터셋으로 만든다.
 
 1. 한국어 Wikimedia 공식 덤프
-2. Open Korean Historical Corpus 중 `Modern Korean`
+2. `HAERAE-HUB/KOREAN-WEBTEXT`
 
-NIKL 말뭉치는 접근 및 수동 준비 부담 때문에 현재 빌드에서 제외했다. 관련
-어댑터는 향후 재검토를 위해 코드에만 유지한다.
+Open Korean Historical Corpus는 현대 한국어 스모크 후보가 한자·옛한글
+중심이었고 레코드의 `copyright`가 비어 있어 현재 빌드에서 제외했다. NIKL도
+현재 제외 상태이며, 두 어댑터는 향후 재검토를 위해 코드에 유지한다.
 
 출력은 Google Drive의 버전 디렉터리에 저장된다.
 
@@ -14,7 +15,7 @@ NIKL 말뭉치는 접근 및 수동 준비 부담 때문에 현재 빌드에서 
 /content/drive/MyDrive/KTB/MyGPT/datasets/
   raw/
     wikimedia/
-    historical/
+    webtext/
       <hugging-face-revision>/
   pretrain/
     v1/
@@ -31,8 +32,10 @@ NIKL 말뭉치는 접근 및 수동 준비 부담 때문에 현재 빌드에서 
 - 텍스트는 Unicode NFC와 LF 줄바꿈으로 정규화한다.
 - 정규화 후 SHA-256이 같은 문서는 선택한 소스 전체에서 한 번만 남긴다.
 - 주제, 안전성, 문서 길이 기반 필터는 아직 적용하지 않는다.
-- Open Korean Historical Corpus는 `language == "Modern Korean"`만 남긴다.
-- 역사 말뭉치는 기본적으로 `copyright == "Public Domain"`도 요구한다.
+- KOREAN-WEBTEXT는 상류 데이터셋의 문장·문서 필터 및 중복 제거가 이미
+  적용된 Parquet을 입력으로 사용한다.
+- KOREAN-WEBTEXT 데이터 카드에는 명시적 라이선스가 없으므로 매니페스트에
+  `Not declared in the dataset card`로 기록하고 결과물 재배포는 보류한다.
 - 문서 해시를 이용해 99.5% 학습, 0.5% 검증으로 결정론적으로 분할한다.
 - `skt/kogpt2-base-v2`의 실제 Hub 커밋을 조회해 매니페스트에 고정한다.
 - 정제된 원문은 Zstandard 압축 Parquet으로 저장한다.
@@ -78,18 +81,19 @@ python -m src.dataset_pipeline.prepare_pretrain \
   --max-accepted-per-source 1000
 ```
 
-### Open Korean Historical Corpus
+### KOREAN-WEBTEXT
 
-스모크 테스트에서는 한 파일만 내려받는다. 정식 빌드에서는
-`--historical-allow-pattern`을 제거하면 전체 JSONL 스냅샷을 받는다.
+전체 데이터는 18개 Parquet 샤드, 약 4.47GB 다운로드, 데이터 카드 기준
+128만 문서와 약 22억 토큰이다. 스모크 테스트에서는 첫 샤드만 내려받고
+1,000문서만 처리한다.
 
 ```bash
 python -m src.dataset_pipeline.prepare_pretrain \
-  --output-dir /content/drive/MyDrive/KTB/MyGPT/datasets/pretrain/smoke-historical-v1 \
+  --output-dir /content/drive/MyDrive/KTB/MyGPT/datasets/pretrain/smoke-webtext-v1 \
   --work-dir /content/mygpt_dataset_work \
   --raw-cache-dir /content/drive/MyDrive/KTB/MyGPT/datasets/raw \
-  --sources historical \
-  --historical-allow-pattern gaksa_modern.jsonl \
+  --sources webtext \
+  --webtext-allow-pattern 'data/train-00000-of-00018.parquet' \
   --max-accepted-per-source 1000
 ```
 
@@ -133,3 +137,10 @@ OUTPUT_VERSION=v2 ./scripts/prepare_pretrain_colab.sh
 원인을 확인한 뒤 이 미완료 디렉터리를 삭제하고 같은 명령을 다시 실행한다.
 원본 다운로드 캐시는 Drive에 남아 있으므로 Wikimedia와 Hugging Face 파일은
 이어받거나 재사용된다.
+
+## 데이터 규모와 학습 예산
+
+정식 통합 빌드는 원본을 재사용할 수 있도록 Wikimedia와 KOREAN-WEBTEXT 전체를
+정규화된 Parquet으로 보존한다. 이것이 8~12시간 동안 22억 토큰을 전부
+학습한다는 뜻은 아니다. A100 단일 GPU 학습용 토큰 예산, 소스 혼합 비율,
+시퀀스 패킹은 데이터 프로파일을 검토한 뒤 별도 학습 입력 단계에서 결정한다.

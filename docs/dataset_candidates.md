@@ -1,17 +1,19 @@
 # Korean Dataset Candidate Review
 
-Review date: 2026-06-13
+Review date: 2026-06-15
 
 ## Selection Update
 
-On 2026-06-14, the current pretraining build was narrowed to:
+On 2026-06-15, the current pretraining build was changed to:
 
 1. the Korean Wikimedia dump
-2. Open Korean Historical Corpus records whose language is `Modern Korean`
+2. `HAERAE-HUB/KOREAN-WEBTEXT`
 
-The implementation also keeps the earlier public-domain filter for the
-historical corpus. NIKL is excluded from the current build; its adapter remains
-available for a later decision.
+Open Korean Historical Corpus was removed after the `gaksa_modern.jsonl` smoke
+test accepted zero records: 36,595 `Modern Korean` records had null copyright
+metadata, and the source was dominated by Hanja and old-Hangul text. NIKL is
+also excluded from the current build. Both adapters remain available for later
+dataset versions.
 
 ## Purpose
 
@@ -39,12 +41,11 @@ dataset manifest must preserve each source's exact terms and revision.
 | Priority | Source | Initial decision | Role |
 | --- | --- | --- | --- |
 | 1 | Korean Wikimedia dump | Include | Modern encyclopedic Korean baseline |
-| 2 | Open Korean Historical Corpus | Conditional include | Public-domain news and institutional text after language/source filtering |
-| 3 | National Institute of Korean Language corpora | Defer | Excluded from the current build; reconsider only after a later access decision |
-| 4 | KOREAN-WEBTEXT | Defer | Fallback only if preferred sources remain below the usable-token target |
+| 2 | KOREAN-WEBTEXT | Include for profiling | Large modern Korean web corpus used to reach the token target |
+| 3 | Open Korean Historical Corpus | Exclude from current build | Current candidate is historical Hanja and old-Hangul heavy |
+| 4 | National Institute of Korean Language corpora | Defer | Excluded from the current build; reconsider only after a later access decision |
 
-The current profiling build uses Wikimedia and selected Open Korean Historical
-Corpus subsets only.
+The current profiling build uses Wikimedia and KOREAN-WEBTEXT.
 
 ### Single-Turn SFT
 
@@ -131,9 +132,10 @@ layout, so an unrestricted load could overwhelm the mixture and train the model
 mostly on historical orthography. Modern Hangul-heavy subsets should be
 measured separately from Hanja or old-Hangul material.
 
-This source is promising for reaching the 500-million-token target without
-general web text, but the final source list and weights remain conditional on
-profiling.
+The `gaksa_modern.jsonl` smoke run found 36,595 `Modern Korean` records, but all
+had null copyright metadata and the text was dominated by Hanja and old
+Hangul. It is excluded from the current build. A future version may reconsider
+another explicitly modern, Hangul-heavy subset after source-level profiling.
 
 ### 3. National Institute of Korean Language Corpora
 
@@ -186,14 +188,22 @@ Source:
 
 - <https://huggingface.co/datasets/HAERAE-HUB/KOREAN-WEBTEXT>
 
-The dataset is large enough to be useful, but inspected samples included
-shopping descriptions, religious text, and low-quality or aggressive blog
-content. Its source mix includes general internet crawls, which conflicts with
-the current preference to exhaust encyclopedia, news, and institutional sources
-first.
+The dataset contains 1,284,879 documents in 18 Parquet shards. The Hub reports
+4,472,792,071 downloaded bytes, 8,555,372,905 uncompressed bytes, and the data
+card reports 2.2 billion tokens. Fields are `text`, `source`, `token_count`, and
+the original index.
 
-Decision: defer. Reconsider only if the accepted preferred-source corpus remains
-below 500 million usable KoGPT2 tokens after filtering and exact deduplication.
+Inspected samples include useful modern news and corporate writing, but also
+shopping descriptions, religious text, low-quality blog material, and awkward
+translated-looking text. The dataset card declares no explicit license. It also
+states that upstream processing already applied exact line deduplication plus
+first-15-token and last-15-token deduplication.
+
+Decision on 2026-06-15: include for profiling after the historical-corpus
+candidate failed the modern-Korean selection goal. Preserve the exact Hub
+revision, upstream source, upstream token count, and undeclared-license status.
+Do not redistribute the resulting combined dataset until usage rights have been
+reviewed.
 
 ## SFT Candidates
 

@@ -5,10 +5,12 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+import pyarrow as pa
 import pyarrow.parquet as pq
 
 from src.dataset_pipeline.adapters import (
     iter_historical_jsonl,
+    iter_korean_webtext_parquet,
     iter_nikl_corpus,
     iter_wikimedia_dump,
 )
@@ -44,14 +46,14 @@ class DatasetAdapterTest(unittest.TestCase):
             published_sha1,
         )
 
-    def test_pretrain_cli_defaults_exclude_nikl(self):
+    def test_pretrain_cli_defaults_to_wikimedia_and_webtext(self):
         with patch(
             "sys.argv",
             ["prepare_pretrain", "--output-dir", "/tmp/pretrain-test"],
         ):
             args = parse_args()
 
-        self.assertEqual(args.sources, ("wikimedia", "historical"))
+        self.assertEqual(args.sources, ("wikimedia", "webtext"))
 
     def test_wikimedia_adapter_keeps_articles_and_rejects_redirects(self):
         xml = """\
@@ -120,6 +122,31 @@ class DatasetAdapterTest(unittest.TestCase):
         rejected = [record.reason for record in records if isinstance(record, RejectedRecord)]
         self.assertEqual([document.source_id for document in documents], ["keep"])
         self.assertCountEqual(rejected, ["non_modern_korean", "copyright_filter"])
+
+    def test_webtext_adapter_streams_parquet_rows(self):
+        table = {
+            "text": ["첫 번째 웹 문서입니다.", ""],
+            "source": ["oscar2201", "cc100"],
+            "token_count": [12, 0],
+            "__index_level_0__": [101, 102],
+        }
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "train-00000.parquet"
+            pq.write_table(
+                pa.table(table),
+                path,
+            )
+            records = list(iter_korean_webtext_parquet([path], batch_size=1))
+
+        self.assertEqual(len(records), 2)
+        self.assertIsInstance(records[0], SourceDocument)
+        self.assertEqual(
+            records[0].source_id,
+            "train-00000.parquet:101",
+        )
+        self.assertEqual(records[0].metadata["upstream_source"], "oscar2201")
+        self.assertIsInstance(records[1], RejectedRecord)
+        self.assertEqual(records[1].reason, "empty_source_text")
 
     def test_nikl_adapter_reads_written_documents(self):
         payload = {

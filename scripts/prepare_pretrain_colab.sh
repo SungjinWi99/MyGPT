@@ -11,7 +11,7 @@ args=(
   --output-dir "${DATASET_ROOT}/pretrain/${OUTPUT_VERSION}"
   --work-dir "${WORK_DIR}"
   --raw-cache-dir "${RAW_CACHE_DIR}"
-  --sources wikimedia historical
+  --sources wikimedia webtext
   --shard-rows 100000
   --tokenize-batch-size 128
   --validation-fraction 0.005
@@ -21,8 +21,8 @@ if [[ -n "${MAX_ACCEPTED_PER_SOURCE:-}" ]]; then
   args+=(--max-accepted-per-source "${MAX_ACCEPTED_PER_SOURCE}")
 fi
 
-if [[ -n "${HISTORICAL_ALLOW_PATTERN:-}" ]]; then
-  args+=(--historical-allow-pattern "${HISTORICAL_ALLOW_PATTERN}")
+if [[ -n "${WEBTEXT_ALLOW_PATTERN:-}" ]]; then
+  args+=(--webtext-allow-pattern "${WEBTEXT_ALLOW_PATTERN}")
 fi
 
 "${args[@]}"
