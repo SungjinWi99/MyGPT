@@ -20,7 +20,6 @@ DEFAULT_WEBTEXT_UPSTREAM_SOURCES = (
     "news",
     "science-webtext",
     "law",
-    "cultureY",
 )
 
 _WIKI_TABLE_RE = re.compile(r"\{\|.*?\|\}", flags=re.DOTALL)

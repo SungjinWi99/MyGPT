@@ -7,15 +7,15 @@ Review date: 2026-06-15
 On 2026-06-15, the current pretraining build was changed to:
 
 1. the Korean Wikimedia dump
-2. the `news`, `science-webtext`, `law`, and `cultureY` subsets of
+2. the `news`, `science-webtext`, and `law` subsets of
    `HAERAE-HUB/KOREAN-WEBTEXT`
 
 Open Korean Historical Corpus was removed after the `gaksa_modern.jsonl` smoke
 test accepted zero records: 36,595 `Modern Korean` records had null copyright
 metadata, and the source was dominated by Hanja and old-Hangul text. NIKL is
 also excluded from the current build. Both adapters remain available for later
-dataset versions. OSCAR and CC100 web-crawl families are deferred after sample
-review found substantially wider quality variance.
+dataset versions. `cultureY`, OSCAR, and CC100 are deferred after sample review
+found substantially wider quality variance.
 
 ## Purpose
 
@@ -211,11 +211,14 @@ general web-crawl role in this decision. See the
 [OSCAR paper](https://arxiv.org/abs/2201.06642) for its document-oriented crawl
 and language-classification pipeline.
 
-Decision on 2026-06-15: keep `news`, `science-webtext`, `law`, and `cultureY`
-by default. Defer OSCAR and CC100 families. Apply only conservative obvious
-spam checks for adult-service and gambling advertisements, multiple trading
-promotion markers, and highly repeated four-word phrases. This is a technical
-quality rule rather than topic or safety filtering.
+Decision on 2026-06-15: keep `news`, `science-webtext`, and `law` by default.
+Defer `cultureY`, OSCAR, and CC100. The 1,000-document `cultureY` smoke sample
+contained useful original Korean writing, but also translation-like rental
+advertising, dream-interpretation SEO text, and concatenated recipe content.
+Apply only conservative obvious spam checks for adult-service and gambling
+advertisements, multiple trading promotion markers, and highly repeated
+four-word phrases. This is a technical quality rule rather than topic or safety
+filtering.
 
 Preserve the exact Hub revision, upstream source, upstream token count, filter
 configuration, and undeclared-license status. Do not redistribute the resulting

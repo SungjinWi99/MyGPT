@@ -134,11 +134,12 @@ class DatasetAdapterTest(unittest.TestCase):
             "text": [
                 "첫 번째 뉴스 문서입니다.",
                 "OSCAR 문서입니다.",
+                "문화 웹 문서입니다.",
                 "",
             ],
-            "source": ["news", "oscar2201", "law"],
-            "token_count": [12, 10, 0],
-            "__index_level_0__": [101, 102, 103],
+            "source": ["news", "oscar2201", "cultureY", "law"],
+            "token_count": [12, 10, 8, 0],
+            "__index_level_0__": [101, 102, 103, 104],
         }
         with tempfile.TemporaryDirectory() as temp_dir:
             path = Path(temp_dir) / "train-00000.parquet"
@@ -148,7 +149,7 @@ class DatasetAdapterTest(unittest.TestCase):
             )
             records = list(iter_korean_webtext_parquet([path], batch_size=1))
 
-        self.assertEqual(len(records), 3)
+        self.assertEqual(len(records), 4)
         self.assertIsInstance(records[0], SourceDocument)
         self.assertEqual(
             records[0].source_id,
@@ -161,7 +162,12 @@ class DatasetAdapterTest(unittest.TestCase):
             "upstream_source_filtered:oscar2201",
         )
         self.assertIsInstance(records[2], RejectedRecord)
-        self.assertEqual(records[2].reason, "empty_source_text")
+        self.assertEqual(
+            records[2].reason,
+            "upstream_source_filtered:cultureY",
+        )
+        self.assertIsInstance(records[3], RejectedRecord)
+        self.assertEqual(records[3].reason, "empty_source_text")
 
     def test_webtext_spam_filter_is_conservative(self):
         self.assertEqual(

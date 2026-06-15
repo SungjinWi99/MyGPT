@@ -330,10 +330,10 @@
         <strong>2026년 6월 15일 현재 범위:</strong>
         사전학습 데이터 준비는 한국어 Wikimedia 덤프와
         <code>HAERAE-HUB/KOREAN-WEBTEXT</code>의 <code>news</code>,
-        <code>science-webtext</code>, <code>law</code>,
-        <code>cultureY</code> 하위 소스로 진행한다. 역사 말뭉치는 스모크 결과가
+        <code>science-webtext</code>, <code>law</code> 하위 소스로
+        진행한다. 역사 말뭉치는 스모크 결과가
         한자·옛한글 중심이고 목표 필터에서 0건이 채택되어 제외했다. OSCAR와
-        CC100 범용 웹 크롤링 계열도 현재 보류한다.
+        CC100 범용 웹 크롤링 계열 및 <code>cultureY</code>도 현재 보류한다.
       </div>
 
       <section id="purpose">
@@ -408,7 +408,7 @@
         <p>
           현재 프로파일링 빌드는 Wikimedia와 KOREAN-WEBTEXT의
           <code>news</code>, <code>science-webtext</code>,
-          <code>law</code>, <code>cultureY</code> 하위 소스를 사용한다.
+          <code>law</code> 하위 소스를 사용한다.
         </p>
 
         <h3>단일 턴 SFT</h3>
@@ -652,12 +652,15 @@ text is non-empty</code></pre>
           <div class="decision include">
             <strong>2026년 6월 15일 판단:</strong>
             <code>news</code>, <code>science-webtext</code>,
-            <code>law</code>, <code>cultureY</code>만 기본 채택하고 OSCAR와
-            CC100 계열은 보류한다. 성인 서비스·도박 광고, 여러 금융 홍보 문구,
-            과도하게 반복되는 4단어 구절처럼 명백한 기술적 스팸만 보수적으로
-            제거한다. 이는 주제 또는 안전성 필터가 아니다. Hub 리비전, 상류
-            소스, 상류 토큰 수, 필터 설정, 라이선스 미표기 상태를 보존하고 사용
-            조건 검토 전까지 결합 데이터셋은 재배포하지 않는다.
+            <code>law</code>만 기본 채택하고 <code>cultureY</code>, OSCAR,
+            CC100 계열은 보류한다. <code>cultureY</code>의 1,000건 스모크
+            샘플에는 유용한 한국어 원문도 있었지만 번역체 렌터카 광고, 꿈 해몽
+            SEO 문서, 여러 레시피가 이어 붙은 문서도 확인됐다. 성인 서비스·도박
+            광고, 여러 금융 홍보 문구, 과도하게 반복되는 4단어 구절처럼 명백한
+            기술적 스팸만 보수적으로 제거한다. 이는 주제 또는 안전성 필터가
+            아니다. Hub 리비전, 상류 소스, 상류 토큰 수, 필터 설정, 라이선스
+            미표기 상태를 보존하고 사용 조건 검토 전까지 결합 데이터셋은
+            재배포하지 않는다.
           </div>
         </article>
       </section>

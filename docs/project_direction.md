@@ -70,9 +70,11 @@ The initial deduplication policy removes exact duplicates only. Near-duplicate
 methods, document-length thresholds, broad boilerplate removal, and detailed
 mixing rules remain deferred. After KOREAN-WEBTEXT was profiled and sampled,
 one source-specific quality rule was approved: keep `news`, `science-webtext`,
-`law`, and `cultureY` by default, defer OSCAR and CC100 web-crawl families, and
-remove only obvious adult-service, gambling, multi-marker trading, or repeated
-phrase spam. This is a technical quality filter, not topic or safety filtering.
+and `law` by default; defer `cultureY`, OSCAR, and CC100; and remove only
+obvious adult-service, gambling, multi-marker trading, or repeated phrase spam.
+This is a technical quality filter, not topic or safety filtering. `cultureY`
+was deferred after its 1,000-document smoke sample showed translation-like
+advertising, dream-interpretation SEO text, and concatenated recipe content.
 
 Research-only and personal-use datasets may be included. Every source must
 retain its license and usage restrictions in the generated manifest. A combined
@@ -217,7 +219,7 @@ The current v1 profiling build uses the Korean Wikimedia dump and
 the smoke candidate produced no accepted records under the intended filter and
 was found to be dominated by Hanja and old-Hangul material. NIKL remains
 deferred. Within KOREAN-WEBTEXT, the current build keeps `news`,
-`science-webtext`, `law`, and `cultureY`. OSCAR and CC100 families are retained
+`science-webtext`, and `law`. `cultureY`, OSCAR, and CC100 families are retained
 in the raw cache but excluded from the normalized dataset until a separate
 quality and mixture experiment justifies their inclusion.
 
