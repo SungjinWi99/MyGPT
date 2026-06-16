@@ -167,5 +167,6 @@ OUTPUT_VERSION=v2 ./scripts/prepare_pretrain_colab.sh
 정식 통합 빌드는 원본 다운로드를 재사용할 수 있도록 Wikimedia와
 KOREAN-WEBTEXT 원본 캐시를 Drive에 보존하고, 정규화된 Parquet에는 필터를
 통과한 문서만 기록한다. 이것이 8~12시간 동안 상류 데이터의 22억 토큰을 전부
-학습한다는 뜻은 아니다. A100 단일 GPU 학습용 토큰 예산, 소스 혼합 비율,
-시퀀스 패킹은 데이터 프로파일을 검토한 뒤 별도 학습 입력 단계에서 결정한다.
+학습한다는 뜻은 아니다. A100 단일 GPU 학습용 토큰 예산은 `config.yaml`의
+`data.token_budget`과 `training.max_steps`로 제한하고, `src.data.PackedPretrainDataset`이
+정규화된 Parquet을 고정 길이 packed cache로 변환해 학습에 사용한다.

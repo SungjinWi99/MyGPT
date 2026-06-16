@@ -1,3 +1,5 @@
-python -m src.train --dataset-path "beomi/KoAlpaca-v1.1a" \
-    --weights-dir "/content/drive/MyDrive/KTB/MyGPT/checkpoints"" \
-    --config-path "./config.yaml"
+python -m src.train \
+  --dataset-path /content/drive/MyDrive/KTB/MyGPT/datasets/pretrain/v2 \
+  --weights-dir /content/drive/MyDrive/KTB/MyGPT/checkpoints \
+  --config-path ./config.yaml \
+  --wandb MyGPT

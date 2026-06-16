@@ -1,0 +1,673 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MyGPT 모델 구조 개선 구현 노트</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f3f5f2;
+      --paper: #ffffff;
+      --ink: #172019;
+      --muted: #5d685f;
+      --line: #dce3dd;
+      --accent: #176b4d;
+      --accent-soft: #e7f3ed;
+      --warm: #fff5df;
+      --warm-line: #d99b25;
+      --code: #f0f4f1;
+      --shadow: 0 20px 60px rgba(27, 49, 37, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at top left, rgba(77, 151, 113, 0.14), transparent 30rem),
+        var(--bg);
+      color: var(--ink);
+      font-family:
+        Pretendard, "Noto Sans KR", "Apple SD Gothic Neo", Inter, system-ui,
+        -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.72;
+      word-break: keep-all;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration-thickness: 1px;
+      text-underline-offset: 0.2em;
+    }
+
+    code {
+      padding: 0.14rem 0.38rem;
+      border-radius: 0.35rem;
+      background: var(--code);
+      color: #234334;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 0.9em;
+      word-break: break-all;
+    }
+
+    pre {
+      max-width: 100%;
+      overflow-x: auto;
+      padding: 1rem 1.15rem;
+      border: 1px solid var(--line);
+      border-radius: 0.75rem;
+      background: var(--code);
+      line-height: 1.55;
+    }
+
+    pre code {
+      padding: 0;
+      background: transparent;
+      word-break: normal;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(13rem, 17rem) minmax(0, 56rem);
+      gap: 2.5rem;
+      width: min(100% - 2rem, 80rem);
+      margin: 0 auto;
+      padding: 3rem 0 5rem;
+    }
+
+    .toc {
+      position: sticky;
+      top: 1.5rem;
+      align-self: start;
+      max-height: calc(100vh - 3rem);
+      overflow: auto;
+      padding: 1.25rem;
+      border: 1px solid var(--line);
+      border-radius: 1rem;
+      background: rgba(255, 255, 255, 0.84);
+      backdrop-filter: blur(14px);
+    }
+
+    .toc strong {
+      display: block;
+      margin-bottom: 0.65rem;
+      color: var(--muted);
+      font-size: 0.78rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .toc a {
+      display: block;
+      padding: 0.34rem 0;
+      color: #465148;
+      font-size: 0.88rem;
+      text-decoration: none;
+    }
+
+    .toc a:hover { color: var(--accent); }
+
+    main {
+      min-width: 0;
+      padding: clamp(1.5rem, 4vw, 3.5rem);
+      border: 1px solid var(--line);
+      border-radius: 1.5rem;
+      background: var(--paper);
+      box-shadow: var(--shadow);
+    }
+
+    .eyebrow {
+      margin: 0 0 0.7rem;
+      color: var(--accent);
+      font-size: 0.8rem;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    h1, h2, h3 { line-height: 1.3; letter-spacing: -0.025em; }
+    h1 { max-width: 13em; margin: 0; font-size: clamp(2.1rem, 6vw, 4rem); }
+    h2 {
+      margin: 4rem 0 1rem;
+      padding-top: 1rem;
+      border-top: 2px solid var(--ink);
+      font-size: clamp(1.55rem, 3vw, 2rem);
+    }
+    h3 { margin: 2.6rem 0 0.75rem; font-size: 1.25rem; }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem 1.5rem;
+      margin: 1.4rem 0 2.5rem;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .lead { color: #354139; font-size: 1.08rem; }
+
+    .notice, .warning {
+      margin: 1.5rem 0;
+      padding: 1rem 1.2rem;
+      border-left: 4px solid var(--accent);
+      border-radius: 0.3rem 0.8rem 0.8rem 0.3rem;
+      background: var(--accent-soft);
+    }
+
+    .warning {
+      border-left-color: var(--warm-line);
+      background: var(--warm);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1rem;
+      margin: 1.2rem 0;
+    }
+
+    .card {
+      min-width: 0;
+      padding: 1.1rem 1.15rem;
+      border: 1px solid var(--line);
+      border-radius: 0.85rem;
+      background: #fbfcfb;
+    }
+
+    .card h3 { margin-top: 0; }
+    .card p:last-child, .card ul:last-child { margin-bottom: 0; }
+
+    .table-wrap {
+      overflow-x: auto;
+      margin: 1.25rem 0 1.8rem;
+      border: 1px solid var(--line);
+      border-radius: 0.8rem;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.91rem;
+    }
+
+    th, td {
+      padding: 0.8rem 0.9rem;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #f7f9f7;
+      color: #3d4941;
+      font-size: 0.8rem;
+      letter-spacing: 0.03em;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+    ul, ol { padding-left: 1.35rem; }
+    li + li { margin-top: 0.35rem; }
+
+    .tag {
+      display: inline-block;
+      margin-right: 0.25rem;
+      padding: 0.12rem 0.5rem;
+      border: 1px solid #9eb8aa;
+      border-radius: 999px;
+      color: #2d6148;
+      font-size: 0.76rem;
+      font-weight: 750;
+    }
+
+    footer {
+      margin-top: 4rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    @media (max-width: 880px) {
+      .layout { display: block; padding-top: 1rem; }
+      .toc { position: static; margin-bottom: 1rem; max-height: none; }
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="toc" aria-label="문서 목차">
+      <strong>목차</strong>
+      <nav>
+        <a href="#decision">권장 기준선</a>
+        <a href="#comparison">구조 비교</a>
+        <a href="#components">개선 요소</a>
+        <a href="#parameters">파라미터 배분</a>
+        <a href="#implementation">구현 순서</a>
+        <a href="#verification">검증 항목</a>
+        <a href="#experiments">후속 비교 실험</a>
+      </nav>
+    </aside>
+
+    <main>
+      <header>
+        <p class="eyebrow">MyGPT Implementation Note</p>
+        <h1>모델 구조 개선 구현 노트</h1>
+        <div class="meta">
+          <span>작성일: 2026년 6월 15일</span>
+          <span>대상: 직접 구현하는 decoder-only Transformer</span>
+          <span>학습 환경: Colab A100 80GB 1장</span>
+        </div>
+      </header>
+
+      <p class="lead">
+        교육 목적의 첫 사전학습 기준선을 현대적인 소형 LLM 구조로 다시
+        구현하기 위한 설계 메모다. 각 개념의 입문 설명보다 코드에 반영할
+        선택과 검증 포인트를 중심으로 정리한다.
+      </p>
+
+      <section id="decision">
+        <h2>권장 기준선</h2>
+        <div class="notice">
+          기존 4-layer 구조를 유지하지 않고, 아래 8-layer 구조를 첫 공식
+          기준선으로 사용한다. 다만 각 요소는 독립 모듈로 구현해 이후 ablation이
+          가능해야 한다.
+        </div>
+
+        <pre><code>model:
+  d_model: 512
+  n_layers: 8
+  n_heads: 8
+  head_dim: 64
+  max_seq_len: 1024
+  position_encoding: rope
+  normalization: rmsnorm
+  ffn_type: swiglu
+  ffn_hidden_size: 1408
+  tie_embeddings: true
+  attention_backend: sdpa
+  dropout: 0.0
+  use_bias: false</code></pre>
+
+        <p>
+          목표는 모델 크기를 무작정 늘리는 것이 아니라, 중복된 출력 임베딩
+          파라미터를 Transformer 블록의 깊이와 표현력에 재배분하는 것이다.
+        </p>
+      </section>
+
+      <section id="comparison">
+        <h2>구조 비교</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>항목</th>
+                <th>현재 구현</th>
+                <th>권장 구현</th>
+                <th>의도</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>블록 수</td>
+                <td>4</td>
+                <td>8</td>
+                <td>문맥 변환 단계와 비선형 깊이 증가</td>
+              </tr>
+              <tr>
+                <td>입출력 임베딩</td>
+                <td>별도 행렬</td>
+                <td>가중치 공유</td>
+                <td>약 2,620만 파라미터 중복 제거</td>
+              </tr>
+              <tr>
+                <td>위치 정보</td>
+                <td>Sinusoidal addition</td>
+                <td>RoPE on Q/K</td>
+                <td>attention 점수에 상대적 위치 반영</td>
+              </tr>
+              <tr>
+                <td>정규화</td>
+                <td>Pre-LayerNorm</td>
+                <td>Pre-RMSNorm</td>
+                <td>평균 제거 없이 스케일 정규화</td>
+              </tr>
+              <tr>
+                <td>FFN</td>
+                <td>GELU, 4d</td>
+                <td>SwiGLU, 약 8d/3</td>
+                <td>게이트 기반 표현력과 유사한 계산량 유지</td>
+              </tr>
+              <tr>
+                <td>Attention</td>
+                <td>직접 행렬 연산</td>
+                <td>PyTorch SDPA</td>
+                <td>A100에서 효율적인 fused kernel 사용</td>
+              </tr>
+              <tr>
+                <td>Linear bias</td>
+                <td>사용</td>
+                <td>미사용</td>
+                <td>구조 단순화와 불필요한 파라미터 축소</td>
+              </tr>
+              <tr>
+                <td>Dropout</td>
+                <td>없음</td>
+                <td>0.0 기준선</td>
+                <td>대규모 next-token 학습의 첫 기준선 단순화</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="components">
+        <h2>개선 요소</h2>
+
+        <div class="grid">
+          <article class="card">
+            <h3>1. Weight Tying</h3>
+            <p>
+              토큰 임베딩 행렬 <code>E</code>를 출력 projection에도 사용한다.
+              별도 <code>Linear(d_model, vocab_size)</code>를 만들지 않는다.
+            </p>
+            <pre><code>self.token_embedding = nn.Embedding(vocab_size, d_model)
+
+logits = F.linear(hidden_states, self.token_embedding.weight)</code></pre>
+            <p>
+              초기화와 checkpoint state dict에서 동일 tensor가 한 번만
+              관리되는지 확인한다.
+            </p>
+          </article>
+
+          <article class="card">
+            <h3>2. 8-layer 깊이</h3>
+            <p>
+              <code>d_model=512</code>와 <code>8 heads</code>는 유지하고 블록만
+              8개로 늘린다. 각 블록은 다음 pre-norm residual 형태를 사용한다.
+            </p>
+            <pre><code>x = x + attention(rmsnorm_attn(x))
+x = x + swiglu(rmsnorm_ffn(x))</code></pre>
+            <p>
+              두 normalization 모듈은 공유하지 않는다. 마지막 logits 이전에도
+              별도 final RMSNorm을 적용한다.
+            </p>
+          </article>
+
+          <article class="card">
+            <h3>3. RoPE</h3>
+            <p>
+              임베딩에 위치 벡터를 더하지 않고, head로 reshape한
+              <code>Q</code>와 <code>K</code>에 회전을 적용한다.
+            </p>
+            <pre><code>q = apply_rope(q, cos[:seq_len], sin[:seq_len])
+k = apply_rope(k, cos[:seq_len], sin[:seq_len])</code></pre>
+            <ul>
+              <li><code>head_dim=64</code>는 짝수인지 검증한다.</li>
+              <li><code>cos/sin</code>은 persistent buffer가 아닌 캐시로 둔다.</li>
+              <li>기준선의 <code>rope_theta</code>는 <code>10000</code>으로 둔다.</li>
+              <li>1024 context에서는 scaling 기법을 적용하지 않는다.</li>
+            </ul>
+          </article>
+
+          <article class="card">
+            <h3>4. RMSNorm</h3>
+            <pre><code>rms = x.pow(2).mean(dim=-1, keepdim=True)
+x_norm = x * torch.rsqrt(rms + eps)
+return weight * x_norm</code></pre>
+            <ul>
+              <li>학습 파라미터는 element-wise scale 하나만 둔다.</li>
+              <li><code>eps=1e-6</code>을 기준값으로 사용한다.</li>
+              <li>BF16에서도 제곱 평균은 필요하면 FP32로 계산한다.</li>
+            </ul>
+          </article>
+
+          <article class="card">
+            <h3>5. SwiGLU</h3>
+            <pre><code>gate, value = input_projection(x).chunk(2, dim=-1)
+hidden = F.silu(gate) * value
+output = output_projection(hidden)</code></pre>
+            <p>
+              기존 <code>4 × d_model = 2048</code> GELU FFN과 계산량을
+              비슷하게 맞추기 위해 hidden size를 약 <code>8d/3</code>로 잡는다.
+              <code>d=512</code>에서는 텐서 코어 친화적인 <code>1408</code>을
+              권장한다.
+            </p>
+          </article>
+
+          <article class="card">
+            <h3>6. SDPA</h3>
+            <pre><code>output = F.scaled_dot_product_attention(
+    q,
+    k,
+    v,
+    attn_mask=None,
+    dropout_p=0.0,
+    is_causal=True,
+)</code></pre>
+            <ul>
+              <li>별도 하삼각 attention mask buffer를 제거한다.</li>
+              <li>Q/K/V shape는 <code>[B, heads, T, head_dim]</code>으로 맞춘다.</li>
+              <li>학습 중 attention weight 자체는 반환하지 않는다.</li>
+              <li>CPU 테스트와 CUDA 결과의 허용 오차를 따로 둔다.</li>
+            </ul>
+          </article>
+        </div>
+
+        <h3>Bias와 초기화</h3>
+        <ul>
+          <li>Q/K/V/O projection과 SwiGLU projection은 <code>bias=False</code>.</li>
+          <li>Embedding과 linear weight는 우선 <code>std=0.02</code> 정규분포로 초기화.</li>
+          <li>Residual branch 출력 projection은 깊이에 맞춘 scaled initialization 검토.</li>
+          <li>첫 기준선에서는 복잡한 μP나 DeepNorm 초기화는 도입하지 않는다.</li>
+        </ul>
+      </section>
+
+      <section id="parameters">
+        <h2>파라미터 배분</h2>
+        <p>
+          KoGPT2 tokenizer의 약 51,200 vocab과 <code>d_model=512</code>를
+          기준으로 한 근사치다.
+        </p>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>구성</th>
+                <th>근사 파라미터</th>
+                <th>비고</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>토큰 임베딩</td>
+                <td>26.2M</td>
+                <td>입출력 공유</td>
+              </tr>
+              <tr>
+                <td>Attention / layer</td>
+                <td>약 1.05M</td>
+                <td>Q, K, V, O projection</td>
+              </tr>
+              <tr>
+                <td>SwiGLU / layer</td>
+                <td>약 2.16M</td>
+                <td>512 → 2×1408 → 512</td>
+              </tr>
+              <tr>
+                <td>8 Transformer blocks</td>
+                <td>약 25.7M</td>
+                <td>Norm 파라미터 포함 근사치</td>
+              </tr>
+              <tr>
+                <td>전체</td>
+                <td>약 52M</td>
+                <td>현재 약 65M보다 작고 블록은 두 배</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="warning">
+          파라미터 수 감소가 곧 계산량 감소를 뜻하지는 않는다. 4층에서 8층으로
+          늘어나므로 token당 block 연산량은 증가한다. A100에서의 실제
+          tokens/sec는 500만 토큰 스모크에서 측정해 1억·5억 토큰 실행 시간을
+          다시 산정한다.
+        </div>
+      </section>
+
+      <section id="implementation">
+        <h2>권장 구현 순서</h2>
+        <ol>
+          <li>
+            <strong>Config와 shape contract</strong><br>
+            새 옵션을 dataclass에 추가하고 <code>d_model % n_heads == 0</code>,
+            RoPE 차원, context 길이를 검증한다.
+          </li>
+          <li>
+            <strong>RMSNorm 단위 구현</strong><br>
+            FP32 reference 식과 forward/backward를 비교한다.
+          </li>
+          <li>
+            <strong>RoPE 단위 구현</strong><br>
+            cos/sin cache, even/odd pair 회전, device와 dtype 이동을 검증한다.
+          </li>
+          <li>
+            <strong>SwiGLU 구현</strong><br>
+            projection shape와 hidden size를 독립 테스트한다.
+          </li>
+          <li>
+            <strong>SDPA attention 구현</strong><br>
+            작은 tensor에서 기존 manual causal attention과 출력을 비교한다.
+          </li>
+          <li>
+            <strong>TransformerBlock 조립</strong><br>
+            pre-norm residual 순서와 gradient 흐름을 확인한다.
+          </li>
+          <li>
+            <strong>Weight tying 적용</strong><br>
+            logits shape, 동일 storage, 저장·복원 후 공유 상태를 검증한다.
+          </li>
+          <li>
+            <strong>전체 모델 smoke test</strong><br>
+            random token batch로 forward, cross entropy, backward,
+            optimizer step을 실행한다.
+          </li>
+          <li>
+            <strong>사전학습 trainer 연결</strong><br>
+            1,024-token packed dataset, BF16, token budget, validation,
+            checkpoint/resume, W&amp;B를 연결한다.
+          </li>
+        </ol>
+      </section>
+
+      <section id="verification">
+        <h2>필수 검증 항목</h2>
+        <div class="grid">
+          <article class="card">
+            <h3>단위 테스트</h3>
+            <ul>
+              <li>각 모듈의 입력·출력 shape</li>
+              <li>causal leakage 없음</li>
+              <li>RoPE cache의 dtype/device 일치</li>
+              <li>RMSNorm reference 일치</li>
+              <li>SDPA와 manual attention 수치 비교</li>
+              <li>embedding weight storage 공유</li>
+            </ul>
+          </article>
+
+          <article class="card">
+            <h3>학습 테스트</h3>
+            <ul>
+              <li>작은 batch에서 loss 감소</li>
+              <li>gradient NaN/Inf 검사</li>
+              <li>BF16과 FP32 loss 차이 확인</li>
+              <li>checkpoint 전후 logits 일치</li>
+              <li>resume 후 token/step 연속성</li>
+              <li>실측 peak GPU memory와 tokens/sec</li>
+            </ul>
+          </article>
+        </div>
+
+        <h3>완료 기준</h3>
+        <ul>
+          <li>모델 파라미터 수가 자동 계산되어 W&amp;B config에 기록된다.</li>
+          <li>고정 seed의 CPU forward test가 재현된다.</li>
+          <li>A100 BF16에서 1,024-token batch의 forward/backward가 안정적으로 돈다.</li>
+          <li>5백만 토큰 스모크 동안 loss가 지속적으로 하락하고 NaN이 없다.</li>
+          <li>중간 checkpoint에서 재개한 결과가 token budget을 정확히 이어간다.</li>
+        </ul>
+      </section>
+
+      <section id="experiments">
+        <h2>후속 비교 실험</h2>
+        <p>
+          첫 기준선을 완성한 뒤 한 번에 한 요소만 바꾸어 비교한다. 모든 비교는
+          같은 packed-data fingerprint, token budget, seed, optimizer 설정을
+          사용한다.
+        </p>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>우선순위</th>
+                <th>비교</th>
+                <th>관찰값</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>1</td>
+                <td>4 layers vs 8 layers</td>
+                <td>동일 토큰·시간에서 validation loss와 tokens/sec</td>
+              </tr>
+              <tr>
+                <td>2</td>
+                <td>GELU vs SwiGLU</td>
+                <td>parameter/FLOP 보정 후 loss</td>
+              </tr>
+              <tr>
+                <td>3</td>
+                <td>Sinusoidal vs RoPE</td>
+                <td>긴 prompt 생성 안정성과 validation loss</td>
+              </tr>
+              <tr>
+                <td>4</td>
+                <td>LayerNorm vs RMSNorm</td>
+                <td>학습 안정성, 속도, loss</td>
+              </tr>
+              <tr>
+                <td>5</td>
+                <td>weight tying on/off</td>
+                <td>같은 token budget에서 perplexity와 메모리</td>
+              </tr>
+              <tr>
+                <td>6</td>
+                <td>dropout 0.0 vs 0.1</td>
+                <td>과적합 징후가 있을 때만 수행</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>
+          <span class="tag">고정</span> tokenizer
+          <span class="tag">고정</span> 데이터 fingerprint
+          <span class="tag">고정</span> token budget
+          <span class="tag">고정</span> prompt suite
+        </p>
+      </section>
+
+      <footer>
+        이 문서는 구현 전 설계 기준이다. 실제 A100 throughput과 5백만 토큰
+        스모크 결과를 얻은 뒤 batch size, gradient accumulation, learning rate,
+        checkpoint 간격은 별도로 확정한다.
+      </footer>
+    </main>
+  </div>
+</body>
+</html>
