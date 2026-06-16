@@ -34,10 +34,17 @@ Review `config.yaml`, then run:
 
 ```bash
 python -m src.train \
-  --dataset-path /content/drive/MyDrive/KTB/MyGPT/datasets/pretrain/v2 \
+  --dataset-path /content/drive/MyDrive/KTB/MyGPT/datasets/pretrain/v1 \
   --weights-dir /content/drive/MyDrive/KTB/MyGPT/checkpoints \
   --config-path ./config.yaml \
   --wandb MyGPT
+```
+
+`scripts/prepare_pretrain_colab.sh` writes `pretrain/v1` by default. If you built
+another version, pass that version explicitly:
+
+```bash
+DATASET_VERSION=v2 ./train.sh
 ```
 
 Weights, datasets, local environments, Weights & Biases logs, and local editor

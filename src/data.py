@@ -111,7 +111,13 @@ class PackedPretrainDataset(Dataset):
     def _parquet_paths(self) -> list[Path]:
         parquet_dir = self.dataset_dir / "parquet" / self.split
         if not parquet_dir.exists():
-            raise FileNotFoundError(f"Missing parquet split directory: {parquet_dir}")
+            raise FileNotFoundError(
+                f"Missing parquet split directory: {parquet_dir}. "
+                "Check that the dataset version exists and contains "
+                f"'parquet/{self.split}'. For the default Colab build, try "
+                f"{self.dataset_dir.parent / 'v1'} or run "
+                "'OUTPUT_VERSION=<version> ./scripts/prepare_pretrain_colab.sh'."
+            )
 
         paths = sorted(parquet_dir.glob("*.parquet"))
         if not paths:

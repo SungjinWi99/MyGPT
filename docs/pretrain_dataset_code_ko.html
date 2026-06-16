@@ -331,7 +331,7 @@ labels    = [t1, t2, t3, ..., t1024]</code></pre>
           <h3><code>dataset_dir</code></h3>
           <p>
             데이터셋 버전 루트다. 예:
-            <code>/content/drive/MyDrive/KTB/MyGPT/datasets/pretrain/v2</code>
+            <code>/content/drive/MyDrive/KTB/MyGPT/datasets/pretrain/v1</code>
           </p>
         </div>
         <div class="card">
@@ -388,7 +388,7 @@ tokenizer = PreTrainedTokenizerFast.from_pretrained(
 )
 
 dataset = PackedPretrainDataset(
-    "/content/drive/MyDrive/KTB/MyGPT/datasets/pretrain/v2",
+    "/content/drive/MyDrive/KTB/MyGPT/datasets/pretrain/v1",
     tokenizer,
     max_seq_len=1024,
     split="train",
@@ -410,7 +410,7 @@ loader = DataLoader(
       <p>
         기본 설정이면 다음 위치에 cache가 생긴다.
       </p>
-      <pre><code>pretrain/v2/
+      <pre><code>pretrain/v1/
   parquet/
     train/
     validation/

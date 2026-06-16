@@ -36,7 +36,7 @@ def parse_args() -> argparse.Namespace:
         dest="dataset_path",
         type=Path,
         required=True,
-        help="Dataset version root, e.g. .../datasets/pretrain/v2",
+        help="Dataset version root, e.g. .../datasets/pretrain/v1",
     )
     parser.add_argument(
         "--weights-dir",
