@@ -10,6 +10,7 @@ class ModelConfig:
     vocab_size: int
     n_decoder_blocks: int
     n_attention_heads: int
+    dropout: float = 0.1
     max_seq_len: int = 1024
 
 @dataclass
