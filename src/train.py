@@ -321,6 +321,37 @@ def generate_samples(
     return samples
 
 
+def build_generated_samples_table(
+    rows: list[dict[str, int | str]],
+) -> wandb.Table:
+    table = wandb.Table(columns=["step", "tokens_seen", "prompt", "completion"])
+    for row in rows:
+        table.add_data(
+            row["step"],
+            row["tokens_seen"],
+            row["prompt"],
+            row["completion"],
+        )
+    return table
+
+
+def collect_sample_rows(
+    *,
+    samples: list[dict[str, str]],
+    global_step: int,
+    tokens_seen: int,
+) -> list[dict[str, int | str]]:
+    return [
+        {
+            "step": global_step,
+            "tokens_seen": tokens_seen,
+            "prompt": sample["prompt"],
+            "completion": sample["completion"],
+        }
+        for sample in samples
+    ]
+
+
 def save_checkpoint(
     path: Path,
     *,
@@ -478,6 +509,7 @@ def main() -> None:
 
     optimizer.zero_grad(set_to_none=True)
     model.train()
+    sample_history_rows: list[dict[str, int | str]] = []
 
     train_iterator = iter(train_loader)
     progress = tqdm(
@@ -547,7 +579,10 @@ def main() -> None:
             metrics.update({"step": global_step, "tokens_seen": tokens_seen})
             wandb.log(metrics, step=global_step)
 
-        if global_step % config.training.sample_interval_steps == 0:
+        if (
+            config.training.sample_interval_steps > 0
+            and global_step % config.training.sample_interval_steps == 0
+        ):
             samples = generate_samples(
                 model,
                 tokenizer,
@@ -555,10 +590,25 @@ def main() -> None:
                 config.model.max_seq_len,
                 config.training.max_new_tokens,
             )
-            table = wandb.Table(columns=["prompt", "completion"])
-            for sample in samples:
-                table.add_data(sample["prompt"], sample["completion"])
-            wandb.log({"generated_samples": table}, step=global_step)
+            sample_rows = collect_sample_rows(
+                samples=samples,
+                global_step=global_step,
+                tokens_seen=tokens_seen,
+            )
+            sample_history_rows.extend(sample_rows)
+            history_table = build_generated_samples_table(sample_history_rows)
+            wandb.log(
+                {
+                    "generated_samples/latest": build_generated_samples_table(
+                        sample_rows
+                    ),
+                    "generated_samples/history": history_table,
+                    f"generated_samples/step_{global_step}": (
+                        build_generated_samples_table(sample_rows)
+                    ),
+                },
+                step=global_step,
+            )
 
         if global_step % config.training.checkpoint_interval_steps == 0:
             checkpoint_path = run_weights_dir / f"checkpoint-step-{global_step}.pt"

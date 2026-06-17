@@ -12,6 +12,7 @@ from src.config import (
     TrainConfig,
 )
 from src.train import build_optimizer, build_scheduler, infer_total_steps
+from src.train import collect_sample_rows
 
 
 class TrainUtilityTest(unittest.TestCase):
@@ -90,6 +91,30 @@ class TrainUtilityTest(unittest.TestCase):
         )
 
         self.assertEqual(total_steps, 48_829)
+
+    def test_collect_sample_rows_adds_training_position(self):
+        rows = collect_sample_rows(
+            samples=[
+                {
+                    "prompt": "서울의 대중교통은",
+                    "completion": "서울의 대중교통은 편리하다",
+                }
+            ],
+            global_step=500,
+            tokens_seen=8_192_000,
+        )
+
+        self.assertEqual(
+            rows,
+            [
+                {
+                    "step": 500,
+                    "tokens_seen": 8_192_000,
+                    "prompt": "서울의 대중교통은",
+                    "completion": "서울의 대중교통은 편리하다",
+                }
+            ],
+        )
 
 
 if __name__ == "__main__":
