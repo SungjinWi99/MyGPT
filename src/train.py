@@ -596,16 +596,12 @@ def main() -> None:
                 tokens_seen=tokens_seen,
             )
             sample_history_rows.extend(sample_rows)
-            history_table = build_generated_samples_table(sample_history_rows)
             wandb.log(
                 {
-                    "generated_samples/latest": build_generated_samples_table(
-                        sample_rows
+                    "generated_samples": build_generated_samples_table(
+                        sample_history_rows
                     ),
-                    "generated_samples/history": history_table,
-                    f"generated_samples/step_{global_step}": (
-                        build_generated_samples_table(sample_rows)
-                    ),
+                    "generated_samples_row_count": len(sample_history_rows),
                 },
                 step=global_step,
             )
