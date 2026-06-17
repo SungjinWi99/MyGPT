@@ -63,6 +63,14 @@ with st.sidebar:
     temperature = st.slider("Temperature", 0.0, 2.0, 0.8, step=0.05)
     top_k = st.slider("Top-k", 0, 200, 50, step=5)
     top_p = st.slider("Top-p", 0.05, 1.0, 0.95, step=0.05)
+    repetition_penalty = st.slider(
+        "Repetition penalty",
+        1.0,
+        2.0,
+        1.15,
+        step=0.05,
+    )
+    no_repeat_ngram_size = st.slider("No repeat n-gram size", 0, 8, 3, step=1)
 
 prompt = st.text_area(
     "Prompt",
@@ -100,6 +108,8 @@ if st.button("Generate", type="primary", disabled=not checkpoint_exists):
                 temperature=temperature,
                 top_k=top_k,
                 top_p=top_p,
+                repetition_penalty=repetition_penalty,
+                no_repeat_ngram_size=no_repeat_ngram_size,
                 device=resolved_device,
             )
 

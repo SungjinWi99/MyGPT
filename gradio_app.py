@@ -47,6 +47,8 @@ def generate(
     temperature: float,
     top_k: int,
     top_p: float,
+    repetition_penalty: float,
+    no_repeat_ngram_size: int,
 ) -> tuple[str, str]:
     resolved_device = default_device() if device == "auto" else device
 
@@ -69,6 +71,8 @@ def generate(
             temperature=temperature,
             top_k=top_k,
             top_p=top_p,
+            repetition_penalty=repetition_penalty,
+            no_repeat_ngram_size=int(no_repeat_ngram_size),
             device=resolved_device,
         )
         metadata = (
@@ -77,7 +81,10 @@ def generate(
             f"tokens_seen={checkpoint.get('tokens_seen')}\n"
             f"model={config.model.model_name}, "
             f"d_model={config.model.d_model}, "
-            f"layers={config.model.n_decoder_blocks}"
+            f"layers={config.model.n_decoder_blocks}\n"
+            f"temperature={temperature}, top_k={top_k}, top_p={top_p}, "
+            f"repetition_penalty={repetition_penalty}, "
+            f"no_repeat_ngram_size={int(no_repeat_ngram_size)}"
         )
         return output, metadata
     except Exception as exc:
@@ -116,6 +123,21 @@ with gr.Blocks(title="MyGPT Demo") as demo:
     with gr.Row():
         top_k = gr.Slider(0, 200, value=50, step=5, label="Top-k")
         top_p = gr.Slider(0.05, 1.0, value=0.95, step=0.05, label="Top-p")
+    with gr.Row():
+        repetition_penalty = gr.Slider(
+            1.0,
+            2.0,
+            value=1.15,
+            step=0.05,
+            label="Repetition penalty",
+        )
+        no_repeat_ngram_size = gr.Slider(
+            0,
+            8,
+            value=3,
+            step=1,
+            label="No repeat n-gram size",
+        )
 
     generate_button = gr.Button("Generate", variant="primary")
     output = gr.Textbox(label="Generated text", lines=10)
@@ -133,6 +155,8 @@ with gr.Blocks(title="MyGPT Demo") as demo:
             temperature,
             top_k,
             top_p,
+            repetition_penalty,
+            no_repeat_ngram_size,
         ],
         outputs=[output, metadata],
     )

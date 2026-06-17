@@ -98,6 +98,52 @@ def _apply_top_k_top_p(
     return logits
 
 
+def apply_repetition_penalty(
+    logits: torch.Tensor,
+    generated_ids: torch.Tensor,
+    *,
+    penalty: float,
+) -> torch.Tensor:
+    if penalty <= 1.0:
+        return logits
+
+    logits = logits.clone()
+    for batch_idx in range(logits.size(0)):
+        token_ids = set(generated_ids[batch_idx].tolist())
+        for token_id in token_ids:
+            if logits[batch_idx, token_id] < 0:
+                logits[batch_idx, token_id] *= penalty
+            else:
+                logits[batch_idx, token_id] /= penalty
+    return logits
+
+
+def ban_repeated_ngrams(
+    logits: torch.Tensor,
+    generated_ids: torch.Tensor,
+    *,
+    ngram_size: int,
+) -> torch.Tensor:
+    if ngram_size <= 0 or generated_ids.size(1) < ngram_size:
+        return logits
+
+    logits = logits.clone()
+    for batch_idx in range(logits.size(0)):
+        tokens = generated_ids[batch_idx].tolist()
+        prefix = tuple(tokens[-(ngram_size - 1) :])
+        banned_tokens = []
+
+        for start_idx in range(len(tokens) - ngram_size + 1):
+            ngram = tuple(tokens[start_idx : start_idx + ngram_size])
+            if ngram[:-1] == prefix:
+                banned_tokens.append(ngram[-1])
+
+        if banned_tokens:
+            logits[batch_idx, banned_tokens] = float("-inf")
+
+    return logits
+
+
 @torch.no_grad()
 def generate_text(
     model: torch.nn.Module,
@@ -109,6 +155,8 @@ def generate_text(
     temperature: float = 0.8,
     top_k: int = 50,
     top_p: float = 0.95,
+    repetition_penalty: float = 1.15,
+    no_repeat_ngram_size: int = 3,
     device: torch.device | str = "cpu",
 ) -> str:
     device = torch.device(device)
@@ -117,6 +165,16 @@ def generate_text(
     for _ in range(max_new_tokens):
         context = generated_ids[:, -max_seq_len:]
         logits = model(context)[:, -1, :]
+        logits = apply_repetition_penalty(
+            logits,
+            generated_ids,
+            penalty=repetition_penalty,
+        )
+        logits = ban_repeated_ngrams(
+            logits,
+            generated_ids,
+            ngram_size=no_repeat_ngram_size,
+        )
 
         if temperature <= 0:
             next_token = torch.argmax(logits, dim=-1, keepdim=True)
