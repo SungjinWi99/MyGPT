@@ -47,6 +47,22 @@ another version, pass that version explicitly:
 DATASET_VERSION=v2 ./train.sh
 ```
 
+## Streamlit demo
+
+After training, run a local checkpoint demo with:
+
+```bash
+streamlit run streamlit_app.py
+```
+
+In Colab, the checkpoint path usually looks like:
+
+```text
+/content/drive/MyDrive/KTB/MyGPT/checkpoints/<wandb-run-name>/latest.pt
+```
+
+Use that `latest.pt` path in the Streamlit sidebar.
+
 Weights, datasets, local environments, Weights & Biases logs, and local editor
 settings are excluded from Git.
 

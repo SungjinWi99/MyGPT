@@ -17,4 +17,5 @@ dependencies = [
     "tqdm>=4.66",
     "transformers>=4.45",
     "wandb>=0.18",
+    "streamlit>=1.36",
 ]
