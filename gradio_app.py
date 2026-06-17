@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 import gradio as gr
@@ -6,10 +7,11 @@ import torch
 from src.inference import generate_text, load_model_from_checkpoint
 
 
-DEFAULT_CHECKPOINT = (
-    "/content/drive/MyDrive/KTB/MyGPT/checkpoints/rich-terrain-7/latest.pt"
+DEFAULT_CHECKPOINT = os.environ.get(
+    "MYGPT_CHECKPOINT",
+    "/content/drive/MyDrive/KTB/MyGPT/checkpoints/8layer-2_4b/latest.pt",
 )
-DEFAULT_CONFIG = "./config.yaml"
+DEFAULT_CONFIG = os.environ.get("MYGPT_CONFIG", "./config.8layer_2_4b.yaml")
 
 MODEL_CACHE = {}
 

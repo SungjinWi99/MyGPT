@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 import streamlit as st
@@ -35,10 +36,16 @@ with st.sidebar:
     st.header("Checkpoint")
     checkpoint_path = st.text_input(
         "Checkpoint path",
-        value="/content/drive/MyDrive/KTB/MyGPT/checkpoints/rich-terrain-7/latest.pt",
+        value=os.environ.get(
+            "MYGPT_CHECKPOINT",
+            "/content/drive/MyDrive/KTB/MyGPT/checkpoints/8layer-2_4b/latest.pt",
+        ),
         help="Use the latest.pt or checkpoint-step-*.pt file created by src.train.",
     )
-    config_path = st.text_input("Config path", value="./config.yaml")
+    config_path = st.text_input(
+        "Config path",
+        value=os.environ.get("MYGPT_CONFIG", "./config.8layer_2_4b.yaml"),
+    )
     prefer_checkpoint_config = st.checkbox(
         "Use config embedded in checkpoint",
         value=True,

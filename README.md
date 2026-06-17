@@ -67,7 +67,19 @@ python gradio_app.py
 ```
 
 It prints a `https://*.gradio.live` URL. Keep the cell running while using the
-demo.
+demo. By default it loads the latest 8-layer run:
+
+```text
+/content/drive/MyDrive/KTB/MyGPT/checkpoints/8layer-2_4b/latest.pt
+```
+
+To test another checkpoint, set the path before launching:
+
+```bash
+MYGPT_CHECKPOINT=/content/drive/MyDrive/KTB/MyGPT/checkpoints/your-run/latest.pt \
+MYGPT_CONFIG=./config.yaml \
+python gradio_app.py
+```
 
 You can also run the Streamlit demo locally:
 
@@ -78,7 +90,7 @@ streamlit run streamlit_app.py
 In Colab, the checkpoint path usually looks like:
 
 ```text
-/content/drive/MyDrive/KTB/MyGPT/checkpoints/rich-terrain-7/latest.pt
+/content/drive/MyDrive/KTB/MyGPT/checkpoints/8layer-2_4b/latest.pt
 ```
 
 Use that `latest.pt` path in the Streamlit sidebar.

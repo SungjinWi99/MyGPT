@@ -1,3 +1,4 @@
+import gc
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any
@@ -43,7 +44,7 @@ def load_model_from_checkpoint(
     prefer_checkpoint_config: bool = True,
 ) -> tuple[torch.nn.Module, PreTrainedTokenizerFast, TrainConfig, dict[str, Any]]:
     device = torch.device(device)
-    checkpoint = torch.load(checkpoint_path, map_location=device)
+    checkpoint = torch.load(checkpoint_path, map_location="cpu")
     config = load_config_for_checkpoint(
         config_path,
         checkpoint,
@@ -55,7 +56,23 @@ def load_model_from_checkpoint(
     state_dict = _strip_compile_prefix(checkpoint["model_state_dict"])
     model.load_state_dict(state_dict)
     model.eval()
-    return model, tokenizer, config, checkpoint
+    checkpoint_metadata = {
+        key: value
+        for key, value in checkpoint.items()
+        if key
+        not in {
+            "model_state_dict",
+            "optimizer_state_dict",
+            "scheduler_state_dict",
+            "torch_rng_state",
+            "cuda_rng_state_all",
+        }
+    }
+    del checkpoint
+    gc.collect()
+    if device.type == "cuda":
+        torch.cuda.empty_cache()
+    return model, tokenizer, config, checkpoint_metadata
 
 
 def _apply_top_k_top_p(
