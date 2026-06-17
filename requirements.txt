@@ -1,5 +1,6 @@
 dacite>=1.8
 datasets>=3.0
+gradio>=4.44
 huggingface_hub>=0.30
 ijson>=3.3
 mwparserfromhell>=0.6

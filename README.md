@@ -47,9 +47,19 @@ another version, pass that version explicitly:
 DATASET_VERSION=v2 ./train.sh
 ```
 
-## Streamlit demo
+## Demo
 
-After training, run a local checkpoint demo with:
+For Colab, prefer the Gradio demo because it provides a public share URL without
+an extra tunnel:
+
+```bash
+python gradio_app.py
+```
+
+It prints a `https://*.gradio.live` URL. Keep the cell running while using the
+demo.
+
+You can also run the Streamlit demo locally:
 
 ```bash
 streamlit run streamlit_app.py
@@ -58,7 +68,7 @@ streamlit run streamlit_app.py
 In Colab, the checkpoint path usually looks like:
 
 ```text
-/content/drive/MyDrive/KTB/MyGPT/checkpoints/<wandb-run-name>/latest.pt
+/content/drive/MyDrive/KTB/MyGPT/checkpoints/rich-terrain-7/latest.pt
 ```
 
 Use that `latest.pt` path in the Streamlit sidebar.

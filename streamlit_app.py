@@ -35,7 +35,7 @@ with st.sidebar:
     st.header("Checkpoint")
     checkpoint_path = st.text_input(
         "Checkpoint path",
-        value="/content/drive/MyDrive/KTB/MyGPT/checkpoints/latest.pt",
+        value="/content/drive/MyDrive/KTB/MyGPT/checkpoints/rich-terrain-7/latest.pt",
         help="Use the latest.pt or checkpoint-step-*.pt file created by src.train.",
     )
     config_path = st.text_input("Config path", value="./config.yaml")
