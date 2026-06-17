@@ -361,9 +361,21 @@ def load_checkpoint(
     model.load_state_dict(checkpoint["model_state_dict"])
     optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
     scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
-    torch.random.set_rng_state(checkpoint["torch_rng_state"].cpu())
+    try:
+        torch.random.set_rng_state(checkpoint["torch_rng_state"].cpu())
+    except (TypeError, RuntimeError, AttributeError) as exc:
+        print(f"Warning: failed to restore CPU RNG state: {exc}")
     if torch.cuda.is_available() and "cuda_rng_state_all" in checkpoint:
-        torch.cuda.set_rng_state_all(checkpoint["cuda_rng_state_all"])
+        try:
+            cuda_states = [
+                state.cpu().to(torch.uint8)
+                if isinstance(state, torch.Tensor)
+                else torch.as_tensor(state, dtype=torch.uint8)
+                for state in checkpoint["cuda_rng_state_all"]
+            ]
+            torch.cuda.set_rng_state_all(cuda_states)
+        except (TypeError, RuntimeError, AttributeError) as exc:
+            print(f"Warning: failed to restore CUDA RNG state: {exc}")
     return int(checkpoint["global_step"]), int(checkpoint["tokens_seen"])
 
 
