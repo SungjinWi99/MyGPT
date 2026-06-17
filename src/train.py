@@ -60,14 +60,6 @@ def parse_args() -> argparse.Namespace:
         default="online",
     )
     parser.add_argument("--run-name", default=None)
-    parser.add_argument(
-        "--resume-from",
-        "--resume_from",
-        dest="resume_from",
-        type=Path,
-        default=None,
-        help="Checkpoint path to resume from",
-    )
     return parser.parse_args()
 
 
@@ -213,7 +205,25 @@ def infer_total_steps(
     train_dataset: PackedPretrainDataset,
     train_loader: DataLoader,
     config: TrainConfig,
+    *,
+    start_step: int = 0,
+    start_tokens: int = 0,
+    target_tokens: int | None = None,
 ) -> int:
+    if target_tokens is not None:
+        if target_tokens <= start_tokens:
+            raise ValueError(
+                f"target_tokens={target_tokens} must be greater than "
+                f"start_tokens={start_tokens}"
+            )
+        batch_tokens = (
+            config.training.batch_size
+            * config.model.max_seq_len
+            * config.training.gradient_accumulation_steps
+        )
+        additional_steps = math.ceil((target_tokens - start_tokens) / batch_tokens)
+        return start_step + additional_steps
+
     if config.training.max_steps is not None:
         return config.training.max_steps
 
@@ -383,21 +393,49 @@ def main() -> None:
         tokenize_batch_size=config.data.tokenize_batch_size,
         token_budget=config.data.validation_token_budget,
     )
-    train_loader = make_dataloader(train_dataset, config, shuffle=True)
-    validation_loader = make_dataloader(validation_dataset, config, shuffle=False)
-    total_steps = infer_total_steps(train_dataset, train_loader, config)
-
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = ModelFactory.build_model_from_config(config.model).to(device)
     if config.training.compile_model and hasattr(torch, "compile"):
         model = torch.compile(model)
 
+    train_loader = make_dataloader(train_dataset, config, shuffle=True)
+    validation_loader = make_dataloader(validation_dataset, config, shuffle=False)
+
+    global_step = 0
+    tokens_seen = 0
+    initial_total_steps = infer_total_steps(train_dataset, train_loader, config)
     optimizer = build_optimizer(model, config.optimizer)
+    scheduler = build_scheduler(optimizer, config.scheduler, initial_total_steps)
+    resume_from = (
+        Path(config.training.resume_from)
+        if config.training.resume_from
+        else None
+    )
+    if resume_from is not None:
+        global_step, tokens_seen = load_checkpoint(
+            resume_from,
+            model=model,
+            optimizer=optimizer,
+            scheduler=scheduler,
+            device=device,
+        )
+
+    total_steps = infer_total_steps(
+        train_dataset,
+        train_loader,
+        config,
+        start_step=global_step,
+        start_tokens=tokens_seen,
+        target_tokens=config.training.target_tokens,
+    )
     scheduler = build_scheduler(optimizer, config.scheduler, total_steps)
+    if resume_from is not None:
+        checkpoint = torch.load(resume_from, map_location=device)
+        scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
 
     run = wandb.init(
         project=args.wandb,
-        name=args.run_name,
+        name=args.run_name or config.training.run_name,
         mode=args.wandb_mode,
         config={
             **asdict(config),
@@ -405,22 +443,13 @@ def main() -> None:
             "train_dataset_meta": train_dataset.meta,
             "validation_dataset_meta": validation_dataset.meta,
             "total_steps": total_steps,
+            "target_tokens": config.training.target_tokens,
+            "resume_from": str(resume_from) if resume_from else None,
         },
     )
-    run_name = args.run_name or run.name or "run"
+    run_name = args.run_name or config.training.run_name or run.name or "run"
     run_weights_dir = args.weights_dir / run_name
     run_weights_dir.mkdir(parents=True, exist_ok=True)
-
-    global_step = 0
-    tokens_seen = 0
-    if args.resume_from is not None:
-        global_step, tokens_seen = load_checkpoint(
-            args.resume_from,
-            model=model,
-            optimizer=optimizer,
-            scheduler=scheduler,
-            device=device,
-        )
 
     optimizer.zero_grad(set_to_none=True)
     model.train()

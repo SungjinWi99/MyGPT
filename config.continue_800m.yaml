@@ -39,9 +39,9 @@ training:
   batch_size: 16
   gradient_accumulation_steps: 1
   max_steps: null
-  target_tokens: null
-  resume_from: null
-  run_name: null
+  target_tokens: 800000000
+  resume_from: "/content/drive/MyDrive/KTB/MyGPT/checkpoints/rich-terrain-7/latest.pt"
+  run_name: "continue-800m"
   max_grad_norm: 1.0
   log_interval_steps: 10
   eval_interval_steps: 500

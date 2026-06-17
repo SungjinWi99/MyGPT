@@ -47,6 +47,16 @@ another version, pass that version explicitly:
 DATASET_VERSION=v2 ./train.sh
 ```
 
+To continue the latest 400M-token run up to 800M cumulative tokens, use the
+dedicated config:
+
+```bash
+DATASET_VERSION=v2 CONFIG_PATH=./config.continue_800m.yaml ./train.sh
+```
+
+Continuation settings such as `resume_from`, `target_tokens`, and `run_name`
+live in the config file under `training`.
+
 ## Demo
 
 For Colab, prefer the Gradio demo because it provides a public share URL without

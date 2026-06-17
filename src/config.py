@@ -54,6 +54,9 @@ class TrainingConfig:
     batch_size: int = 16
     gradient_accumulation_steps: int = 1
     max_steps: int | None = None
+    target_tokens: int | None = None
+    resume_from: str | None = None
+    run_name: str | None = None
     max_grad_norm: float = 1.0
     log_interval_steps: int = 10
     eval_interval_steps: int = 500
