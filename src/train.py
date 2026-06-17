@@ -1,4 +1,5 @@
 import argparse
+import gc
 import math
 import random
 import shutil
@@ -356,11 +357,13 @@ def load_checkpoint(
     optimizer: torch.optim.Optimizer,
     scheduler: LambdaLR,
     device: torch.device,
-) -> tuple[int, int]:
-    checkpoint = torch.load(path, map_location=device)
+) -> tuple[int, int, dict[str, Any]]:
+    print(f"Loading checkpoint from {path}")
+    checkpoint = torch.load(path, map_location="cpu")
     model.load_state_dict(checkpoint["model_state_dict"])
     optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
-    scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
+    scheduler_state_dict = checkpoint["scheduler_state_dict"]
+    scheduler.load_state_dict(scheduler_state_dict)
     try:
         torch.random.set_rng_state(checkpoint["torch_rng_state"].cpu())
     except (TypeError, RuntimeError, AttributeError) as exc:
@@ -376,7 +379,14 @@ def load_checkpoint(
             torch.cuda.set_rng_state_all(cuda_states)
         except (TypeError, RuntimeError, AttributeError) as exc:
             print(f"Warning: failed to restore CUDA RNG state: {exc}")
-    return int(checkpoint["global_step"]), int(checkpoint["tokens_seen"])
+    global_step = int(checkpoint["global_step"])
+    tokens_seen = int(checkpoint["tokens_seen"])
+    print(f"Resumed from step={global_step}, tokens_seen={tokens_seen}")
+    del checkpoint
+    gc.collect()
+    if device.type == "cuda":
+        torch.cuda.empty_cache()
+    return global_step, tokens_seen, scheduler_state_dict
 
 
 def main() -> None:
@@ -424,13 +434,15 @@ def main() -> None:
         else None
     )
     if resume_from is not None:
-        global_step, tokens_seen = load_checkpoint(
+        global_step, tokens_seen, resume_scheduler_state_dict = load_checkpoint(
             resume_from,
             model=model,
             optimizer=optimizer,
             scheduler=scheduler,
             device=device,
         )
+    else:
+        resume_scheduler_state_dict = None
 
     total_steps = infer_total_steps(
         train_dataset,
@@ -441,9 +453,10 @@ def main() -> None:
         target_tokens=config.training.target_tokens,
     )
     scheduler = build_scheduler(optimizer, config.scheduler, total_steps)
-    if resume_from is not None:
-        checkpoint = torch.load(resume_from, map_location=device)
-        scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
+    if resume_scheduler_state_dict is not None:
+        scheduler.load_state_dict(resume_scheduler_state_dict)
+        del resume_scheduler_state_dict
+        gc.collect()
 
     run = wandb.init(
         project=args.wandb,
