@@ -28,6 +28,36 @@ class MyGPT2ModelTest(unittest.TestCase):
 
         self.assertEqual(logits.shape, (2, 16, config.vocab_size))
         self.assertTrue(torch.isfinite(logits).all())
+        self.assertTrue(model.tie_embeddings)
+        self.assertFalse(hasattr(model, "lm_head"))
+
+    def test_model_factory_can_disable_weight_tying(self):
+        config = ModelConfig(
+            model_name="MyGPT2",
+            d_model=64,
+            vocab_size=512,
+            n_decoder_blocks=2,
+            n_attention_heads=4,
+            dropout=0.0,
+            max_seq_len=32,
+            tie_embeddings=False,
+        )
+        model = ModelFactory.build_model_from_config(config)
+        model.eval()
+
+        self.assertFalse(model.tie_embeddings)
+        self.assertTrue(hasattr(model, "lm_head"))
+        self.assertNotEqual(
+            model.embedding.weight.data_ptr(),
+            model.lm_head.weight.data_ptr(),
+        )
+
+        input_ids = torch.randint(0, config.vocab_size, (2, 16))
+        with torch.no_grad():
+            logits = model(input_ids)
+
+        self.assertEqual(logits.shape, (2, 16, config.vocab_size))
+        self.assertTrue(torch.isfinite(logits).all())
 
     def test_gpt_style_init_keeps_initial_logits_well_scaled(self):
         torch.manual_seed(0)

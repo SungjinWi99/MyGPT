@@ -48,9 +48,11 @@ class MyGPT2(nn.Module):
                n_decoder_blocks,
                n_attention_heads=8,
                dropout=0.1,
-               max_seq_len=512):
+               max_seq_len=512,
+               tie_embeddings=True):
     super(MyGPT2, self).__init__()
     self.n_decoder_blocks = n_decoder_blocks
+    self.tie_embeddings = tie_embeddings
     self.embedding = nn.Embedding(vocab_size, d_model)
     decoders = [
         DecoderBlockV2(
@@ -63,6 +65,8 @@ class MyGPT2(nn.Module):
     ]
     self.decoders = nn.Sequential(*decoders)
     self.normalize = RMSNorm(d_model)
+    if not self.tie_embeddings:
+      self.lm_head = nn.Linear(d_model, vocab_size, bias=False)
     self.apply(self._init_weights)
     self._init_residual_projections()
 
@@ -85,4 +89,6 @@ class MyGPT2(nn.Module):
     x = self.embedding(x)
     x = self.decoders(x)
     x = self.normalize(x)
+    if not self.tie_embeddings:
+      return self.lm_head(x)
     return F.linear(x, self.embedding.weight)

@@ -5,7 +5,7 @@ model:
   n_decoder_blocks: 8
   n_attention_heads: 8
   max_seq_len: 1024
-  tie_embeddings: true
+  tie_embeddings: false
 
 tokenizer:
   pretrained_model_name_or_path: "skt/kogpt2-base-v2"
@@ -42,7 +42,7 @@ training:
   max_steps: null
   target_tokens: 2400000000
   resume_from: null
-  run_name: "8layer-2_4b"
+  run_name: "8layer-untied-2_4b"
   max_grad_norm: 1.0
   log_interval_steps: 10
   eval_interval_steps: 500
