@@ -83,6 +83,7 @@ class MyGPT1_5(nn.Module):
     residual_std = 0.02 / math.sqrt(2 * self.n_decoder_blocks)
     for decoder in self.decoders:
       nn.init.normal_(decoder.attention.linear.weight, mean=0.0, std=residual_std)
+      nn.init.normal_(decoder.ffn[2].weight, mean=0.0, std=residual_std)
 
   def forward(self, x):
     x = self.embedding(x)
@@ -135,7 +136,7 @@ class MyGPT2(nn.Module):
     residual_std = 0.02 / math.sqrt(2 * self.n_decoder_blocks)
     for decoder in self.decoders:
       nn.init.normal_(decoder.attention.linear.weight, mean=0.0, std=residual_std)
-      nn.init.normal_(decoder.ffn[2].weight, mean=0.0, std=residual_std)
+      nn.init.normal_(decoder.ffn.w_o.weight, mean=0.0, std=residual_std)
 
   def forward(self, x):
     x = self.embedding(x)
