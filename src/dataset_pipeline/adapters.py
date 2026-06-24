@@ -2,6 +2,7 @@ import bz2
 import json
 import re
 import xml.etree.ElementTree as ET
+import zipfile
 from collections import Counter
 from collections.abc import Iterable, Iterator
 from pathlib import Path
@@ -322,6 +323,192 @@ def _webtext_spam_reason(text: str) -> str | None:
         if four_grams and max(four_grams.values()) >= repetition_threshold:
             return "repeated_phrase_spam"
     return None
+
+
+def _year_or_none(value: object) -> int | None:
+    if value is None:
+        return None
+    match = re.search(r"\d{4}", str(value))
+    if not match:
+        return None
+    try:
+        return int(match.group(0))
+    except ValueError:
+        return None
+
+
+def iter_aihub_korean_llm_zip(paths: Iterable[Path]) -> Iterator[Record]:
+    source = "aihub_korean_llm"
+
+    for path in paths:
+        if path.stat().st_size <= 0:
+            yield RejectedRecord(source=source, reason="empty_zip_file")
+            continue
+        if ".irx" in path.name.lower():
+            yield RejectedRecord(source=source, reason="partial_upload_file")
+            continue
+
+        try:
+            zip_handle = zipfile.ZipFile(path)
+        except zipfile.BadZipFile:
+            yield RejectedRecord(source=source, reason="malformed_zip")
+            continue
+
+        with zip_handle:
+            json_members = [
+                name
+                for name in zip_handle.namelist()
+                if name.lower().endswith(".json")
+                and not name.rstrip("/").split("/")[-1].startswith("._")
+            ]
+            if not json_members:
+                yield RejectedRecord(source=source, reason="missing_json_member")
+                continue
+
+            for member in json_members:
+                yielded = False
+                try:
+                    with zip_handle.open(member) as handle:
+                        for index, document in enumerate(
+                            ijson.items(handle, "data_info.item")
+                        ):
+                            yielded = True
+                            if not isinstance(document, dict):
+                                yield RejectedRecord(
+                                    source=source,
+                                    reason="malformed_data_info_item",
+                                )
+                                continue
+
+                            text = str(document.get("contents") or "")
+                            if not text.strip():
+                                yield RejectedRecord(
+                                    source=source,
+                                    reason="empty_source_text",
+                                )
+                                continue
+
+                            category = document.get("data_category")
+                            if not isinstance(category, dict):
+                                category = {}
+
+                            source_id = str(
+                                document.get("data_id")
+                                or f"{path.name}:{member}:{index}"
+                            )
+                            yield SourceDocument(
+                                source=source,
+                                source_id=source_id,
+                                title=str(document.get("data_title") or ""),
+                                text=text,
+                                url=str(document.get("data_source") or ""),
+                                license=str(document.get("data_ccl") or "AIHub terms"),
+                                language="ko",
+                                year=_year_or_none(document.get("data_year")),
+                                corpus="AIHub Korean LLM corpus",
+                                metadata={
+                                    "data_file": document.get("data_file"),
+                                    "data_type": document.get("data_type"),
+                                    "collected_date": document.get("collected_date"),
+                                    "data_institution": document.get(
+                                        "data_institution"
+                                    ),
+                                    "data_author": document.get("data_author"),
+                                    "data_count": document.get("data_count"),
+                                    "category_main": category.get("main"),
+                                    "category_middle": category.get("middle"),
+                                    "category_sub": category.get("sub"),
+                                    "raw_file": path.name,
+                                    "zip_member": member,
+                                },
+                            )
+                    if not yielded:
+                        yield RejectedRecord(
+                            source=source,
+                            reason="unsupported_json_shape",
+                        )
+                except (OSError, ijson.JSONError, zipfile.BadZipFile):
+                    yield RejectedRecord(source=source, reason="malformed_json")
+
+
+def iter_aihub_commonsense_sentence_zip(paths: Iterable[Path]) -> Iterator[Record]:
+    source = "aihub_commonsense_sentence_generation"
+
+    for path in paths:
+        if path.stat().st_size <= 0:
+            yield RejectedRecord(source=source, reason="empty_zip_file")
+            continue
+        if ".irx" in path.name.lower():
+            yield RejectedRecord(source=source, reason="partial_upload_file")
+            continue
+
+        try:
+            zip_handle = zipfile.ZipFile(path)
+        except zipfile.BadZipFile:
+            yield RejectedRecord(source=source, reason="malformed_zip")
+            continue
+
+        with zip_handle:
+            json_members = [
+                name
+                for name in zip_handle.namelist()
+                if name.lower().endswith(".json")
+                and not name.rstrip("/").split("/")[-1].startswith("._")
+            ]
+            if not json_members:
+                yield RejectedRecord(source=source, reason="missing_json_member")
+                continue
+
+            for member in json_members:
+                yielded = False
+                try:
+                    with zip_handle.open(member) as handle:
+                        for index, document in enumerate(ijson.items(handle, "item")):
+                            yielded = True
+                            if not isinstance(document, dict):
+                                yield RejectedRecord(
+                                    source=source,
+                                    reason="malformed_json_item",
+                                )
+                                continue
+
+                            text = str(document.get("sentence") or "")
+                            if not text.strip():
+                                yield RejectedRecord(
+                                    source=source,
+                                    reason="empty_source_text",
+                                )
+                                continue
+
+                            source_id = str(
+                                document.get("id")
+                                or f"{path.name}:{member}:{index}"
+                            )
+                            yield SourceDocument(
+                                source=source,
+                                source_id=source_id,
+                                text=text,
+                                license="AIHub approved-use terms",
+                                language="ko",
+                                corpus="AIHub commonsense sentence generation",
+                                metadata={
+                                    "ref_src": document.get("refSrc"),
+                                    "ref_id": document.get("refId"),
+                                    "ref_text": document.get("refText"),
+                                    "domain": document.get("domain"),
+                                    "sent_source": document.get("sentSource"),
+                                    "words_count": document.get("words_count"),
+                                    "raw_file": path.name,
+                                    "zip_member": member,
+                                },
+                            )
+                    if not yielded:
+                        yield RejectedRecord(
+                            source=source,
+                            reason="unsupported_json_shape",
+                        )
+                except (OSError, ijson.JSONError, zipfile.BadZipFile):
+                    yield RejectedRecord(source=source, reason="malformed_json")
 
 
 def _iter_ijson_documents(path: Path, prefix: str) -> Iterator[dict]:

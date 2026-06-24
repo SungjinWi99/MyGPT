@@ -1,5 +1,6 @@
 import argparse
 import hashlib
+import unicodedata
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -9,6 +10,8 @@ from transformers import AutoTokenizer
 
 from src.dataset_pipeline.adapters import (
     DEFAULT_WEBTEXT_UPSTREAM_SOURCES,
+    iter_aihub_commonsense_sentence_zip,
+    iter_aihub_korean_llm_zip,
     iter_historical_jsonl,
     iter_korean_webtext_parquet,
     iter_nikl_corpus,
@@ -45,7 +48,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--sources",
         nargs="+",
-        choices=("wikimedia", "webtext", "historical", "nikl"),
+        choices=("wikimedia", "webtext", "historical", "nikl", "aihub"),
         default=DEFAULT_SOURCES,
     )
     parser.add_argument(
@@ -96,6 +99,17 @@ def parse_args() -> argparse.Namespace:
         "--nikl-corpora",
         nargs="+",
         default=("WRITTEN", "NEWSPAPER"),
+    )
+    parser.add_argument("--aihub-root", type=Path)
+    parser.add_argument(
+        "--aihub-include-validation-source",
+        action="store_true",
+        help="Include AIHub Validation/01.원천데이터 zips in addition to Training.",
+    )
+    parser.add_argument(
+        "--aihub-include-rlhf",
+        action="store_true",
+        help="Include AIHub RLHF zips. Keep disabled for plain pretraining.",
     )
     parser.add_argument("--tokenizer-name", default=DEFAULT_TOKENIZER)
     parser.add_argument("--tokenizer-revision")
@@ -195,6 +209,94 @@ def _nikl_inventory(root: Path, corpora: tuple[str, ...] | list[str]) -> list[di
                     }
                 )
     return inventory
+
+
+def _aihub_korean_llm_paths(
+    root: Path,
+    *,
+    include_validation_source: bool = False,
+    include_rlhf: bool = False,
+) -> list[Path]:
+    return _aihub_source_zip_paths(
+        root,
+        include_validation_source=include_validation_source,
+        include_rlhf=include_rlhf,
+        required_path_markers=(
+            "121.한국어 성능이 개선된 초거대AI 언어모델 개발 및 데이터",
+            "한국어말뭉치데이터",
+        ),
+    )
+
+
+def _aihub_commonsense_sentence_paths(
+    root: Path,
+    *,
+    include_validation_source: bool = False,
+) -> list[Path]:
+    return _aihub_source_zip_paths(
+        root,
+        include_validation_source=include_validation_source,
+        include_rlhf=False,
+        required_path_markers=(
+            "048.일반상식 문장 생성 데이터",
+            "일반상식 문장_생성데이터",
+        ),
+    )
+
+
+def _aihub_source_zip_paths(
+    root: Path,
+    *,
+    include_validation_source: bool,
+    include_rlhf: bool,
+    required_path_markers: tuple[str, ...],
+) -> list[Path]:
+    paths = []
+    normalized_root_parts = {
+        unicodedata.normalize("NFC", part) for part in root.parts
+    }
+    for path in sorted(root.rglob("*.zip")):
+        if not path.is_file():
+            continue
+        if path.stat().st_size <= 0:
+            continue
+        lowered_name = path.name.lower()
+        if ".irx" in lowered_name:
+            continue
+        if not include_rlhf and "rlhf" in lowered_name:
+            continue
+        normalized_path = unicodedata.normalize("NFC", str(path))
+        if any(marker not in normalized_path for marker in required_path_markers):
+            continue
+
+        parts = {unicodedata.normalize("NFC", part) for part in path.parts}
+        is_source_data = "01.원천데이터" in parts
+        is_training = "Training" in parts
+        is_validation = "Validation" in parts
+
+        if "01.원천데이터" in normalized_root_parts:
+            is_source_data = True
+            is_training = True
+        if "Training" in normalized_root_parts:
+            is_training = True
+        if "Validation" in normalized_root_parts:
+            is_validation = True
+
+        if not is_source_data:
+            continue
+        if is_training or (include_validation_source and is_validation):
+            paths.append(path)
+    return paths
+
+
+def _file_inventory(paths: list[Path], root: Path) -> list[dict]:
+    return [
+        {
+            "path": str(path.relative_to(root)),
+            "bytes": path.stat().st_size,
+        }
+        for path in paths
+    ]
 
 
 def main() -> None:
@@ -367,6 +469,83 @@ def main() -> None:
                 iter_nikl_corpus(args.nikl_root, nikl_corpora),
             )
         )
+
+    if "aihub" in args.sources:
+        if args.aihub_root is None:
+            raise ValueError("--aihub-root is required when selecting AIHub")
+        if not args.aihub_root.exists():
+            raise FileNotFoundError(args.aihub_root)
+        aihub_paths = _aihub_korean_llm_paths(
+            args.aihub_root,
+            include_validation_source=args.aihub_include_validation_source,
+            include_rlhf=args.aihub_include_rlhf,
+        )
+        aihub_commonsense_paths = _aihub_commonsense_sentence_paths(
+            args.aihub_root,
+            include_validation_source=args.aihub_include_validation_source,
+        )
+        if not aihub_paths and not aihub_commonsense_paths:
+            raise FileNotFoundError(
+                f"No usable AIHub source zip files found under {args.aihub_root}"
+            )
+        if aihub_paths:
+            source_config["aihub_korean_llm"] = {
+                "dataset": "121.한국어 성능이 개선된 초거대AI 언어모델 개발 및 데이터",
+                "local_root": str(args.aihub_root),
+                "file_count": len(aihub_paths),
+                "downloaded_bytes": sum(path.stat().st_size for path in aihub_paths),
+                "include_validation_source": args.aihub_include_validation_source,
+                "include_rlhf": args.aihub_include_rlhf,
+                "license": "AIHub approved-use terms",
+                "raw_files": _file_inventory(aihub_paths, args.aihub_root),
+            }
+            streams.append(
+                (
+                    "aihub_korean_llm",
+                    iter_aihub_korean_llm_zip(aihub_paths),
+                )
+            )
+        if aihub_commonsense_paths:
+            source_config["aihub_commonsense_sentence_generation"] = {
+                "dataset": "048.일반상식 문장 생성 데이터",
+                "local_root": str(args.aihub_root),
+                "file_count": len(aihub_commonsense_paths),
+                "downloaded_bytes": sum(
+                    path.stat().st_size for path in aihub_commonsense_paths
+                ),
+                "include_validation_source": args.aihub_include_validation_source,
+                "license": "AIHub approved-use terms",
+                "raw_files": _file_inventory(
+                    aihub_commonsense_paths,
+                    args.aihub_root,
+                ),
+            }
+            streams.append(
+                (
+                    "aihub_commonsense_sentence_generation",
+                    iter_aihub_commonsense_sentence_zip(aihub_commonsense_paths),
+                )
+            )
+        source_config["aihub"] = {
+            "dataset": "AIHub pretraining source bundle",
+            "local_root": str(args.aihub_root),
+            "file_count": len(aihub_paths) + len(aihub_commonsense_paths),
+            "downloaded_bytes": sum(
+                path.stat().st_size
+                for path in [*aihub_paths, *aihub_commonsense_paths]
+            ),
+            "include_validation_source": args.aihub_include_validation_source,
+            "include_rlhf": args.aihub_include_rlhf,
+            "license": "AIHub approved-use terms",
+            "included_datasets": [
+                "121.한국어 성능이 개선된 초거대AI 언어모델 개발 및 데이터",
+                "048.일반상식 문장 생성 데이터",
+            ],
+            "raw_files": _file_inventory(
+                [*aihub_paths, *aihub_commonsense_paths],
+                args.aihub_root,
+            ),
+        }
 
     builder = DatasetBuilder(
         output_dir=args.output_dir,

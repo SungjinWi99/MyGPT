@@ -2,6 +2,7 @@ import bz2
 import json
 import tempfile
 import unittest
+import zipfile
 from pathlib import Path
 from unittest.mock import patch
 
@@ -11,6 +12,8 @@ import pyarrow.parquet as pq
 from src.dataset_pipeline.adapters import (
     DEFAULT_WEBTEXT_UPSTREAM_SOURCES,
     _webtext_spam_reason,
+    iter_aihub_commonsense_sentence_zip,
+    iter_aihub_korean_llm_zip,
     iter_historical_jsonl,
     iter_korean_webtext_parquet,
     iter_nikl_corpus,
@@ -229,6 +232,92 @@ class DatasetAdapterTest(unittest.TestCase):
         self.assertIsInstance(records[0], SourceDocument)
         self.assertEqual(records[0].source_id, "NIKL-1")
         self.assertEqual(records[0].text, "첫 문단입니다.\n\n둘째 문단입니다.")
+
+    def test_aihub_korean_llm_adapter_streams_zip_json(self):
+        payload = {
+            "dataset_info": {"name": "sample"},
+            "data_info": [
+                {
+                    "data_id": "AIHUB-1",
+                    "data_file": "source/0001.txt",
+                    "data_title": "샘플 문서",
+                    "data_type": "텍스트",
+                    "data_year": "2024",
+                    "collected_date": "240101",
+                    "data_institution": "기관",
+                    "data_author": ["저자"],
+                    "data_source": "https://example.com",
+                    "data_ccl": "CC BY",
+                    "data_count": 12,
+                    "data_category": {
+                        "main": "문어체",
+                        "middle": "기술",
+                        "sub": "예시",
+                    },
+                    "contents": "AIHub 원문입니다.",
+                },
+                {
+                    "data_id": "AIHUB-EMPTY",
+                    "contents": "",
+                },
+            ],
+        }
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "sample.zip"
+            with zipfile.ZipFile(path, "w") as zip_handle:
+                zip_handle.writestr(
+                    "sample.json",
+                    json.dumps(payload, ensure_ascii=False),
+                )
+            records = list(iter_aihub_korean_llm_zip([path]))
+
+        self.assertEqual(len(records), 2)
+        self.assertIsInstance(records[0], SourceDocument)
+        self.assertEqual(records[0].source_id, "AIHUB-1")
+        self.assertEqual(records[0].title, "샘플 문서")
+        self.assertEqual(records[0].text, "AIHub 원문입니다.")
+        self.assertEqual(records[0].year, 2024)
+        self.assertEqual(records[0].license, "CC BY")
+        self.assertEqual(records[0].metadata["category_main"], "문어체")
+        self.assertIsInstance(records[1], RejectedRecord)
+        self.assertEqual(records[1].reason, "empty_source_text")
+
+    def test_aihub_commonsense_sentence_adapter_streams_source_sentences(self):
+        payload = [
+            {
+                "id": "CS-1",
+                "refSrc": "krdict",
+                "refId": "14720",
+                "sentence": "다람쥐는 겨우내 먹을 음식을 모았다.",
+                "domain": ["일상"],
+                "words_count": 5,
+            },
+            {
+                "id": "CS-EMPTY",
+                "sentence": "",
+            },
+        ]
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "commonsense.zip"
+            with zipfile.ZipFile(path, "w") as zip_handle:
+                zip_handle.writestr(
+                    "nia_2022_15-1_commonsense_TL.json",
+                    json.dumps(payload, ensure_ascii=False),
+                )
+            records = list(iter_aihub_commonsense_sentence_zip([path]))
+
+        self.assertEqual(len(records), 2)
+        self.assertIsInstance(records[0], SourceDocument)
+        self.assertEqual(records[0].source, "aihub_commonsense_sentence_generation")
+        self.assertEqual(records[0].source_id, "CS-1")
+        self.assertEqual(records[0].text, "다람쥐는 겨우내 먹을 음식을 모았다.")
+        self.assertEqual(
+            records[0].corpus,
+            "AIHub commonsense sentence generation",
+        )
+        self.assertEqual(records[0].metadata["ref_src"], "krdict")
+        self.assertIsInstance(records[1], RejectedRecord)
+        self.assertEqual(records[1].reason, "empty_source_text")
 
 
 class DatasetBuilderTest(unittest.TestCase):
