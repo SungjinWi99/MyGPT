@@ -41,7 +41,7 @@ class MyGPT(nn.Module):
     return x
 
 
-@ModelFactory.register_model("MyGPT2")
+@ModelFactory.register_model("MyGPT1_5")
 class MyGPT1_5(nn.Module):
   def __init__(self, d_model,
                vocab_size,
