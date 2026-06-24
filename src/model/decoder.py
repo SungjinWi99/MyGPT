@@ -23,7 +23,7 @@ class DecoderBlock(nn.Module):
 
 class DecoderBlockV1_5(nn.Module):
   def __init__(self, d_model, n_attention_heads, dropout=0.1, max_seq_len=512):
-    super(DecoderBlockV2, self).__init__()
+    super(DecoderBlockV1_5, self).__init__()
     self.normalize1 = RMSNorm(d_model)
     self.attention = MultiHeadAttentionV2(d_model, n_attention_heads, max_seq_len)
     self.dropout1 = nn.Dropout(p=dropout)
